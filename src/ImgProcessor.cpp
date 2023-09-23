@@ -2,7 +2,11 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+
 #include "opencv2/imgproc.hpp"
+
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
 
 void ShowImg(cv::Mat img, const std::string& imgName)
 {
@@ -29,6 +33,15 @@ void ImgProcessor::LoadImgStacks(const std::string& img_stack_path)
     }
 }
 
+void ImgProcessor::FilterImgStacksWithGaussian()
+{
+    int kenerl_size = 3;
+    for(auto & img : this->img_stacks_)
+    {
+        cv::GaussianBlur(img, img, cv::Size(kenerl_size, kenerl_size), 0);
+    }
+}
+
 
 void ImgProcessor::LoadImgStacksMask(const std::string& img_stack_mask_path)
 {
@@ -46,6 +59,7 @@ void ImgProcessor::LoadImgStacksMask(const std::string& img_stack_mask_path)
 
 void ImgProcessor::LoadImgContourSamplePoints(const std::string& img_contour_sample_points_path)
 {
+    this->contour_sample_points_.clear();
     std::string line;
     std::ifstream myfile(img_contour_sample_points_path);
     if (myfile.is_open())
@@ -88,17 +102,66 @@ Mat ImgProcessor::CalStructureTensor(const Vec3& gradeint)
 {
     Mat tensor(3,3, CV_32F);
     Mat grad(gradeint);
-
-    Mat tensor =  grad * grad.t();
+    std:: cout << "grad " << grad << std::endl;
+    tensor =  grad * grad.t();
     return tensor;
 }
 
 
-Mat CalSamplePointsStructureTensor()
+void ImgProcessor::CalSamplePointsStructureTensor()
 {
-    
+    for(size_t i = 0; i < this->contour_sample_points_gradients_.size(); ++i)
+    {
+        const auto& gradient = contour_sample_points_gradients_[i];
+        std::cout << "gradient " << gradient << std::endl;
+        Mat tensor = CalStructureTensor(gradient);
+        std::cout << "tensor " << tensor << std::endl;
+    }
 
 }
+
+Mat ImgProcessor::CalStructureTensorGaussain(const Point3i& point)
+{
+    int k_size = 3;
+    int half = k_size / 2;
+    auto cur_gradient = CalPointGradient(point);
+
+    Mat tensor_avg(3, 3, CV_32F);
+    float params[3][3] = {{1, 2, 1}, {2, 4, 2}, {1, 2, 1}};
+    Mat Gaussian2D(3, 3, CV_32F, params);
+    // Gaussian2D = Gaussian2D / cv::sum(Gaussian2D);
+    std::vector<Mat> Gaussian3D;
+    float sum = cv::sum(Gaussian2D)[0] * 2;
+    Gaussian3D.push_back(Gaussian2D * 0.5 / sum);
+    Gaussian3D.push_back(Gaussian2D / sum);
+    Gaussian3D.push_back(Gaussian2D * 0.5 / sum);
+
+    for(int z_d = -half; z_d <= half; ++z_d)
+    {
+        for(int y_d = -half; y_d <= half; ++y_d)
+        {
+            for(int x_d = -half; x_d <= half; ++ x_d)
+            {
+                int x = std::max(0, x_d + point.x);
+                x = x < volume_x_max_ ? x : volume_x_max_;
+
+                int y = std::max(0, y_d + point.y);
+                y = y < volume_y_max_ ? y : volume_y_max_;
+
+                int z = std::max(0, z_d + point.z);
+                z = z < volume_z_max_ ? z : volume_z_max_;
+                Point3i new_p(x, y, z);
+                auto gradient = CalPointGradient(new_p);
+                Mat tensor = CalStructureTensor(gradient);
+                float g_param = Gaussian3D[z_d + half].at<float> (y_d + half, x_d + half);
+                tensor_avg = tensor_avg + tensor *  g_param;
+            }
+        }
+    }
+    return tensor_avg;     
+}
+
+
 
 
 Vec3 ImgProcessor::CalPointGradient(const Point3i& point)
@@ -160,24 +223,94 @@ Vec3 ImgProcessor::CalPointGradient(const Point3i& point)
 
 void ImgProcessor::CalSamplePointsGradients()
 {
-    std::cout << " img stack size : " << img_stacks_.size() << std::endl;
-    std::cout << " img stack  data type  : "  << img_stacks_[0].type();
+    // std::cout << " img stack size : " << img_stacks_.size() << std::endl;
+    // std::cout << " img stack  data type  : "  << img_stacks_[0].type();
+    this->contour_sample_points_gradients_.clear();
+    max_gradient_norm_ = 0;
     for(size_t i = 0; i < this->contour_sample_points_.size(); ++i)
     {
         const auto& img_p = contour_sample_points_[i]; 
         // std::cout << img_p.x << " " << img_p.y << " " << img_p.z<< std::endl;
         Vec3 gradient = CalPointGradient(img_p);
         this->contour_sample_points_gradients_.push_back(gradient);
+        float g_len = cv::norm(gradient);
+        max_gradient_norm_ = max_gradient_norm_ > g_len ? max_gradient_norm_ : g_len;
     }
     std::cout << " Cal Contour Sample Points  gradient succeed, with gradient number: "<<  this->contour_sample_points_gradients_.size() << std::endl;
 
 }
+
+void ImgProcessor::CalSamplePointsTangentVector()
+{
+    this->contour_sample_points_tangents_.clear();
+    size_t p_size = this->contour_sample_points_.size();
+    if(p_size < 3) return; 
+    for(size_t i = 0; i < p_size; ++i)
+    {
+        size_t pre_id = i - 1 < 0 ? i - 1 + p_size : i - 1;
+        size_t next_id = i + 1 >= p_size ? i + 1 - p_size : i + 1;
+        auto tangent_dir = this->contour_sample_points_[next_id] - this->contour_sample_points_[pre_id];
+        Vec3 tangent(tangent_dir.x, tangent_dir.y, tangent_dir.z);
+        tangent = tangent / sqrt(tangent.dot(tangent));
+        this->contour_sample_points_tangents_.push_back(tangent);
+    }
+}
+
+void ImgProcessor::SaveImgContourSamplePoints(const std::string& img_contour_sample_points_path)
+{
+    std::fstream s_file{ img_contour_sample_points_path, s_file.out };
+    const auto& c_points = this->contour_sample_points_;
+    for (size_t i = 0; i < c_points.size(); ++i)
+    {
+        auto point = c_points[i];
+        // auto gradient = volume_gradients_[i] ;
+        std::string p_str = std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z);
+        s_file << "v " << p_str << std::endl;
+    }
+}
+
+
+void ImgProcessor::CalSamplePointsGradientsTangentProjection()
+{
+    this->contour_sample_points_projection_.clear();
+    if(this->contour_sample_points_gradients_.empty() || this->contour_sample_points_tangents_.empty())
+    {
+
+        std::cout << " sample_points_gradients or sample_points_tangents are empty !!!" << std::endl;
+        return;
+    }
+    
+    if(this->contour_sample_points_gradients_.size() != this->contour_sample_points_tangents_.size())
+    {
+        std::cout << " sample_points_gradients size : " << this->contour_sample_points_gradients_.size() << std::endl;
+        std::cout << " sample_points_tangents size : " << this->contour_sample_points_tangents_.size() << std::endl;
+        
+        std::cout << " sample_points_gradients and sample_points_tangents do not have same size !!!" << std::endl;
+        return;
+    }
+    for(size_t i =0; i < this->contour_sample_points_tangents_.size(); ++i)
+    {
+        auto project = this->contour_sample_points_tangents_[i].dot(contour_sample_points_gradients_[i]);
+        this->contour_sample_points_projection_.push_back(fabs(project));
+    }
+}
+
 
 void ImgProcessor::SaveImgContourSamplePointsWithGradients(const std::string& img_contour_sample_points_path)
 {
     std::fstream s_file{ img_contour_sample_points_path, s_file.out };
     const auto& c_points = this->contour_sample_points_;
     const auto& c_gradients = this->contour_sample_points_gradients_; 
+
+    if(this->contour_sample_points_projection_.empty()) return;
+    float min_project = this->contour_sample_points_projection_[0];
+    float max_project = this->contour_sample_points_projection_[0];
+    for(auto project : this->contour_sample_points_projection_)
+    {
+        min_project = min_project < project ? min_project : project;
+        max_project = max_project > project ? max_project : project;
+    }
+
     for (size_t i = 0; i < c_points.size(); ++i)
     {
         auto point = c_points[i];
@@ -187,23 +320,53 @@ void ImgProcessor::SaveImgContourSamplePointsWithGradients(const std::string& im
         // {
         //     std::cout << "gradient value : " << gradient << std::endl;
         // }
-        gradient = cv::normalize(gradient) * cv::norm(gradient) / 1000  ;
+        gradient = cv::normalize(gradient) * cv::norm(gradient) / this->max_gradient_norm_ * 10;
         auto px = point.x + gradient[0];
         auto py = point.y + gradient[1];
         auto pz = point.z + gradient[2];
         auto new_p = Point3(px, py, pz);
 
+        auto project = this->contour_sample_points_projection_[i];
+        float color_r = (project - min_project) / (max_project - min_project) ;
+        float color_b = (max_project - project) / (max_project - min_project) ;
+        std::string color_str =  " " + std::to_string(color_r) + " " + std::to_string(color_b) + " " + std::to_string(0.1);
+
         std::string p_str = std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z);
-        s_file << "v " << p_str << std::endl;
+        s_file << "v " << p_str << color_str << std::endl;
 
         std::string e_str = std::to_string(new_p.x) + " " + std::to_string(new_p.y) + " " + std::to_string(new_p.z);
-        s_file << "v " << e_str << std::endl;
+        s_file << "v " << e_str << color_str << std::endl;
+
+        std::string m_str = std::to_string((point.x + new_p.x)/2) + " " + std::to_string((point.y + new_p.y)/2) 
+            + " " + std::to_string((point.z + new_p.z)/2);
+        s_file << "v " << m_str << color_str << std::endl;
     }
 
     for (size_t i = 0; i < c_points.size(); ++i)
     {
-        std::string new_l = "l " + std::to_string(i *2 + 1) + " " + std::to_string(i *2 + 2);
+        // std::string new_l = "l " + std::to_string(i *2 + 1) + " " + std::to_string(i *2 + 2);
+        std::string new_l = "f " + std::to_string(i *3 + 1) + " " + std::to_string(i *3 + 2) + " " + std::to_string(i *3 + 3);
         s_file << new_l << std::endl;
+    }
+}
+
+
+void ImgProcessor::SaveOriginalImgs(const std::string& path)
+{
+    for(size_t i =0; i <this->img_stacks_.size(); ++i)
+    {
+        std::string out_img_path = path + std::to_string(i) + ".png";
+        auto img = img_stacks_[i];
+        double minVal; 
+        double maxVal;
+        minMaxLoc(img, &minVal, &maxVal);
+        cv::Mat new_img =  (img - minVal) / (maxVal - minVal) * 255;
+        // cv::Mat new_img = img;
+        
+        new_img.convertTo(new_img, CV_8U);
+        // ShowImg(new_img, "new img");
+        cv::imwrite(out_img_path, new_img);
+        
     }
 }
 
@@ -438,7 +601,7 @@ void ImgProcessor::SaveGradients(const std::string& path)
         // {
         //     std::cout << "gradient value : " << gradient << std::endl;
         // }
-        gradient = cv::normalize(gradient) * cv::norm(gradient) / max_gradient_norm_ * sample_step_ ;
+        gradient = cv::normalize(gradient) * cv::norm(gradient) / 1000 * sample_step_ ;
         auto px = point.x + gradient[0];
         auto py = point.y + gradient[1];
         auto pz = point.z + gradient[2];
@@ -460,9 +623,48 @@ void ImgProcessor::SaveGradients(const std::string& path)
     }
 }
 
+
+void ImgProcessor::RunSinglePipeline(const std::string& img_stack_path, const std::string& point_path, const std::string& out_gradient_path)
+{
+    LoadImgStacks(img_stack_path);
+    FilterImgStacksWithGaussian();
+    LoadImgContourSamplePoints(point_path);
+    CalSamplePointsGradients();
+    CalSamplePointsTangentVector();
+    CalSamplePointsGradientsTangentProjection();
+    // std::string gradient_path = out_subdir + "/gradients.obj";
+    SaveImgContourSamplePointsWithGradients(out_gradient_path);
+    // std::string out_point_path = out_subdir + "/contour_points.obj";
+    // SaveImgContourSamplePoints(out_point_path);
+}
+
+void ImgProcessor::RunBatchesPipeline(const std::string& img_stack_dir, const std::string& point_dir, const std::string& out_dir)
+{
+    for(const auto & entry : fs::directory_iterator(img_stack_dir))
+    {
+        max_gradient_norm_ = 0.0;
+        std::string file = fs::path(entry).filename();
+        // std::cout << file << std::endl;
+        auto found = file.find('_');
+        if (found!=std::string::npos)
+        {
+            std::string file_name = file.substr(0, found);
+            std::cout << file_name << std::endl; 
+            std::string point_path = point_dir + "/" + file_name + "/contour_points/opt_cv_contour_5/opt_cv_contour_4.xyz";
+            std::string out_gradient_path = out_dir + "/" + file_name + "_gradient.obj";
+            if(fs::exists(point_path))
+            {
+                RunSinglePipeline(fs::path(entry), point_path, out_gradient_path);
+            }
+        }
+        // break;
+    }
+}
+
 void ImgProcessor::RunGradientsPipeline(const std::string& img_stack_path, const std::string& img_mask_stack_path, const std::string& out_path)
 {
     LoadImgStacks(img_stack_path);
+    FilterImgStacksWithGaussian();
     // LoadImgStacksMask(img_mask_stack_path);
     std::cout << " Load Img stacks success !" << std::endl;
     this->contour_mask_overlay_output_path_ = "../data/contour_mask_overlay/"; 
@@ -470,13 +672,21 @@ void ImgProcessor::RunGradientsPipeline(const std::string& img_stack_path, const
     std::string point_path = "/home/jjxia/Documents/projects/SparseRecon/IMG/6007/contour_points/opt_cv_contour_5/opt_cv_contour_4.xyz";
     LoadImgContourSamplePoints(point_path);
     CalSamplePointsGradients();
-    std::string gradient_path = "../data/gradients.obj";
+    CalSamplePointsTangentVector();
+    CalSamplePointsGradientsTangentProjection();
+    std::string gradient_path = "../data/gradients4_0.obj";
     SaveImgContourSamplePointsWithGradients(gradient_path);
-//     CalVolumeGradients();
-//     std::cout << " CalVolumeGradients success !" << std::endl;
-//     SampleVolumeGradients(sample_step_);
-//      std::cout << " SampleVolumeGradients success !" << std::endl;
-//     SaveGradients(out_path);
+
+    std::string out_point_path = "../data/contour_point4_0.obj";
+    SaveImgContourSamplePoints(out_point_path);
+    // CalSamplePointsStructureTensor();
+    // std::string original_path = "../data/original_data/";
+    // SaveOriginalImgs(original_path);
+    //     CalVolumeGradients();
+    //     std::cout << " CalVolumeGradients success !" << std::endl;
+    //     SampleVolumeGradients(sample_step_);
+    //      std::cout << " SampleVolumeGradients success !" << std::endl;
+    //     SaveGradients(out_path);
 }
 
 
