@@ -26,6 +26,7 @@ class ImgProcessor{
         void FilterImgStacksWithGaussian();
         void ScanImageEdgeDetection();
         void SaveOriginalImgs(const std::string& path);
+        void CalSobelScore();
 
         void CalVolumeGradients();
         void SampleVolumeGradients(size_t sample_step);
@@ -36,6 +37,8 @@ class ImgProcessor{
         void RunGradientsPipeline(const std::string& img_stack_path, const std::string& img_mask_stack_path, const std::string& out_path);
         void RunSinglePipeline(const std::string& img_stack_path, const std::string& point_path, const std::string& out_path);
         void RunBatchesPipeline(const std::string& img_stack_dir, const std::string& point_dir, const std::string& out_dir);
+
+        void CalSobelScore();
 
     private:
         Mat CalStructureTensor(const Vec3& gradeint);

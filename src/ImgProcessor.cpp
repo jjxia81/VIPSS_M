@@ -2,10 +2,12 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-
+#include <thread>
 #include "opencv2/imgproc.hpp"
 
 #include <experimental/filesystem>
+
+
 namespace fs = std::experimental::filesystem;
 
 void ShowImg(cv::Mat img, const std::string& imgName)
@@ -623,6 +625,57 @@ void ImgProcessor::SaveGradients(const std::string& path)
     }
 }
 
+void ImgProcessor::CalSobelScore()
+{
+    this->volume_gradient_z_.clear();
+    size_t img_stack_num = img_stacks_.size();
+    if(img_stack_num == 0) return;
+    size_t img_rows = img_stacks_[0].rows;
+    size_t img_cols = img_stacks_[0].cols;
+    auto img_type = img_stacks_[0].type();
+    std::vector<std::vector<float>>  gradient_x = {{-1,  0,  1}, {-2, 0, 2}, {-1, 0, 1}};
+    std::vector<std::vector<float>>  gradient_y = {{-1, -2, -1}, {0, 0, 0},  {1, 2, 1}};
+    
+
+    for(size_t i = 0; i < img_stack_num; ++i)
+    {
+        auto cur_img = img_stacks_[i];
+        size_t rows = cur_img.rows;
+        size_t cols = cur_img.cols;
+
+        cv::Mat sobel_x = cv::Mat::zeros(rows, cols, cur_img.type());
+        cv::Mat sobel_y = cv::Mat::zeros(rows, cols, cur_img.type());
+        // cv::copyMakeBorder( cur_img, new_img, 1, 1, 1, 1, cv::BORDER_REPLICATE);
+        for(int i = 1; i < cur_img.rows - 1; ++i)
+        {
+            for(int j = 1; j < cur_img.cols - 1; ++j)
+            {
+                float sum_x = 0;
+                float sum_y = 0;
+                for(int m = 0; m < 3; ++m)
+                {
+                    for(int n = 0; n < 3; ++n)
+                    {
+                        float param_x = gradient_x[m][n]; 
+                        float param_y = gradient_y[m][n];
+                        int r_i = i - m + 1;
+                        int c_j = j - n + 1;
+                        if(r_i < 0 || r_i > cur_img.rows) continue;
+                        if(c_j < 0 || c_j > cur_img.cols) continue;
+                        sum_x += param_x * cur_img.at<double>(r_i, c_j);  
+                        sum_y += param_y * cur_img.at<double>(r_i, c_j);  
+                    }
+                }
+                sobel_x.at<double>(i, j) = sum_x;
+                sobel_y.at<double>(i, j) = sum_y;
+            }
+        }
+        
+    }
+    
+}
+
+
 
 void ImgProcessor::RunSinglePipeline(const std::string& img_stack_path, const std::string& point_path, const std::string& out_gradient_path)
 {
@@ -636,6 +689,7 @@ void ImgProcessor::RunSinglePipeline(const std::string& img_stack_path, const st
     SaveImgContourSamplePointsWithGradients(out_gradient_path);
     // std::string out_point_path = out_subdir + "/contour_points.obj";
     // SaveImgContourSamplePoints(out_point_path);
+
 }
 
 void ImgProcessor::RunBatchesPipeline(const std::string& img_stack_dir, const std::string& point_dir, const std::string& out_dir)
@@ -652,9 +706,11 @@ void ImgProcessor::RunBatchesPipeline(const std::string& img_stack_dir, const st
             std::cout << file_name << std::endl; 
             std::string point_path = point_dir + "/" + file_name + "/contour_points/opt_cv_contour_5/opt_cv_contour_4.xyz";
             std::string out_gradient_path = out_dir + "/" + file_name + "_gradient.obj";
+            std::string out_point_path = out_dir + "/" + file_name + "_points.obj";
             if(fs::exists(point_path))
             {
                 RunSinglePipeline(fs::path(entry), point_path, out_gradient_path);
+                SaveImgContourSamplePoints(out_point_path);
             }
         }
         // break;
