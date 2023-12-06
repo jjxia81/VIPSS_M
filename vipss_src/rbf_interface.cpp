@@ -38,8 +38,7 @@ void RBF_Core::BuildK(RBF_Paras para){
     }
     auto t2 = Clock::now();
     cout << "Build Time: " << (setup_time = std::chrono::nanoseconds(t2 - t1).count()/1e9) << endl<< endl;
-
-
+    
     if(0)BuildCoherentGraph();
 }
 
@@ -89,13 +88,12 @@ void RBF_Core::Surfacing(int method, int n_voxels_1d){
 
     n_evacalls = 0;
     Surfacer sf;
-
+    int nvoxels = n_voxels_1d ;
     surf_time = sf.Surfacing_Implicit(pts,n_voxels_1d,false,RBF_Core::Dist_Function);
 
     sf.WriteSurface(finalMesh_v,finalMesh_fv);
 
     cout<<"n_evacalls: "<<n_evacalls<<"   ave: "<<surf_time/n_evacalls<<endl;
-
 
 }
 
@@ -108,6 +106,7 @@ int RBF_Core::InjectData(vector<double> &pts, RBF_Paras para){
 
     InjectData(pts,labels,normals,tangents,edges,para);
 
+    return 1;
 }
 
 int RBF_Core::InjectData(vector<double> &pts, vector<int> &labels, vector<double> &normals, vector<double> &tangents, vector<uint> &edges, RBF_Paras para){
@@ -181,8 +180,6 @@ void RBF_Core::BatchInitEnergyTest(vector<double> &pts, vector<int> &labels, vec
 vector<double>* RBF_Core::ExportPts(){
 
     return &pts;
-
-
 
 }
 

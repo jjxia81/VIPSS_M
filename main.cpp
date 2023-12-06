@@ -84,13 +84,6 @@ int main(int argc, char** argv)
         rbf_core.Print_TimerRecord_Single(outpath+pcname+"_time.txt");
     }
 
-
-
-
-
-
-
-
     return 0;
 }
 

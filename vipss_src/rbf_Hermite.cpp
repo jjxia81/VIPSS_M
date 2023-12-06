@@ -89,7 +89,7 @@ void RBF_Core::Set_HermiteRBF(vector<double>&pts){
     cout<<"Set_HermiteRBF"<<endl;
     //for(auto a:pts)cout<<a<<' ';cout<<endl;
     isHermite = true;
-
+    cout << "npt number " << npt << endl;
     a.set_size(npt*4);
     M.set_size(npt*4,npt*4);
     double *p_pts = pts.data();
@@ -296,9 +296,7 @@ void RBF_Core::Set_Hermite_PredictNormal(vector<double>&pts){
         M.clear();N.clear();
         cout<<"K11: "<<K11.n_cols<<endl;
 
-
         //Set_Hermite_DesignedCurve();
-
         Set_User_Lamnda_ToMatrix(User_Lamnbda_inject);
 
 		

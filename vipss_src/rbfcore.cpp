@@ -82,7 +82,6 @@ double XCube_GradientDot_Kernel_2p(const double *p1, const double *p2, const dou
 
 void XCube_Hessian_Kernel_2p(const double *p1, const double *p2, double *H){
 
-
     double diff[3];
     for(int i=0;i<3;++i)diff[i] = p1[i] - p2[i];
     double len_dist  = sqrt(MyUtility::len(diff));
@@ -94,10 +93,7 @@ void XCube_Hessian_Kernel_2p(const double *p1, const double *p2, double *H){
             if(i==j)H[i*3+j] = 3 * pow(diff[i],2) / len_dist + 3 * len_dist;
             else H[i*3+j] = 3 * diff[i] * diff[j] / len_dist;
     }
-
-
     return;
-
 }
 
 void XCube_HessianDot_Kernel_2p(const double *p1, const double *p2, const double *p3, vector<double>&dotout){
@@ -240,8 +236,46 @@ inline double RBF_Core::Dist_Function(const double *p){
     double re = loc_part + poly_part;
     return re;
 
+}
+
+
+inline double RBF_Core::Dist_Function2(const double *p){
+
+    n_evacalls++;
+    double *p_pts = pts.data();
+    static arma::vec kern(npt), kb;
+    
+    kern.set_size(npt*4);
+    double G[3];
+    for(int i=0;i<npt;++i)kern(i) = Kernal_Function_2p(p_pts+i*3, p);
+    for(int i=0;i<npt;++i){
+        Kernal_Gradient_Function_2p(p,p_pts+i*3,G);
+        for(int j=0;j<3;++j)kern(npt+i*3+j) = G[j];
+        // for(int j=0;j<3;++j)kern(npt+i+j*npt) = G[j];
+    }
+
+    double loc_part = dot(kern,a);
+
+    
+    kb.set_size(4);
+    for(int i=0;i<3;++i)kb(i) = p[i];
+    kb(3) = 1;
+    
+    double poly_part = dot(kb,b);
+
+    if(0){
+        cout<<"dist: "<<p[0]<<' '<<p[1]<<' '<<p[2]<<' '<<p_pts[3]<<' '<<p_pts[4]<<' '<<p_pts[5]<<' '<<
+              Kernal_Function_2p(p,p_pts+3)<<endl;
+        for(int i=0;i<npt;++i)cout<<kern(i)<<' ';
+        for(int i=0;i<bsize;++i)cout<<kb(i)<<' ';
+        cout<<endl;
+    }
+
+    double re = loc_part + poly_part;
+    return re;
 
 }
+
 static RBF_Core * s_hrbf;
 double RBF_Core::Dist_Function(const R3Pt &in_pt){
     return s_hrbf->Dist_Function(&(in_pt[0]));

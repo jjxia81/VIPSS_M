@@ -67,6 +67,10 @@ public:
     RBF_METHOD Method;
     RBF_Kernal Kernal;
     RBF_InitMethod InitMethod;
+
+    double para_lambda;
+    double para_beta;
+
     bool isusesparse;
     int polyDeg;
     double sigma;
@@ -90,8 +94,6 @@ public:
 class RBF_Core{
 
 public:
-
-
 
     int npt;
     int polyDeg = 2;
@@ -208,6 +210,7 @@ public:
 
     double Dist_Function(const double x, const double y, const double z);
     inline double Dist_Function(const double *p);
+    inline double Dist_Function2(const double *p);
 
 public:
     static double Dist_Function(const R3Pt &in_pt);
@@ -340,6 +343,7 @@ public:
     void Print_Record_Init();
 
     void Print_TimerRecord_Single(string fname);
+
 
 };
 
