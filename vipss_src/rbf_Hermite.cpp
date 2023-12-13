@@ -36,12 +36,7 @@ void RBF_Core::NormalRecification(double maxlen, vector<double>&nors){
         for(int i=0;i<np;++i){
             MyUtility::normalize(p_vn+i*3);
         }
-
     }
-
-
-
-
 }
 
 bool RBF_Core::Write_Hermite_NormalPrediction(string fname, int mode){
@@ -67,10 +62,10 @@ bool RBF_Core::Write_Hermite_NormalPrediction(string fname, int mode){
 //    }
 
     vector<double>nors;
-    if(mode ==0)nors=initnormals;
+    if(mode == 0)nors=initnormals;
     else if(mode == 1)nors=newnormals;
     else if(mode == 2)nors = initnormals_uninorm;
-    NormalRecification(1.,nors);
+    // NormalRecification(1.,nors);
 
     //for(int i=0;i<npt;++i)if(randomdouble()<0.5)MyUtility::negVec(nors.data()+i*3);
     //cout<<pts.size()<<' '<<f2v.size()<<' '<<nors.size()<<' '<<labelcolor.size()<<endl;
@@ -470,8 +465,8 @@ int RBF_Core::Opt_Hermite_PredictNormal_UnitNormal(){
         callfunc_time = acc_time;
         solve_time = sol.time;
         //for(int i=0;i<npt;++i)cout<< sol.solveval[i]<<' ';cout<<endl;
-
     }
+
     newnormals.resize(npt*3);
     arma::vec y(npt*4);
     for(int i=0;i<npt;++i)y(i) = 0;
@@ -489,6 +484,22 @@ int RBF_Core::Opt_Hermite_PredictNormal_UnitNormal(){
     //sol.energy = arma::dot(a,M*a);
     cout<<"Opt_Hermite_PredictNormal_UnitNormal"<<endl;
     return 1;
+}
+
+void RBF_Core::Update_Newnormals()
+{
+    newnormals.resize(npt*3);
+    arma::vec y(npt*4);
+    for(int i=0;i<npt;++i)y(i) = 0;
+    for(int i=0;i<npt;++i){
+
+        double ai = this->a[i];
+        double bi = this->b[i];
+        newnormals[i*3]   = y(npt+i) = sin(ai) * cos(bi);
+        newnormals[i*3+1] = y(npt+i+npt) = sin(ai) * sin(bi);
+        newnormals[i*3+2] = y(npt+i+npt*2) = cos(ai);
+        MyUtility::normalize(newnormals.data()+i*3);
+    }
 }
 
 void RBF_Core::Set_RBFCoef(arma::vec &y){
@@ -568,7 +579,6 @@ int RBF_Core::Lamnbda_Search_GlobalEigen(){
 
 
 void RBF_Core::Print_LamnbdaSearchTest(string fname){
-
 
     cout<<setprecision(7);
     cout<<"Print_LamnbdaSearchTest"<<endl;

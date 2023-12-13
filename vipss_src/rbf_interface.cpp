@@ -76,7 +76,6 @@ void RBF_Core::OptNormal(int method){
     case Hermite_UnitNormal:
         Opt_Hermite_PredictNormal_UnitNormal();
         break;
-
     }
     auto t2 = Clock::now();
     cout << "Opt Time: " << (solve_time = std::chrono::nanoseconds(t2 - t1).count()/1e9) << endl<< endl;

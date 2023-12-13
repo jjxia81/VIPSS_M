@@ -265,7 +265,7 @@ public:
     void Set_User_Lamnda_ToMatrix(double user_ls);
 
     void Set_SparsePara(double spa);
-
+    void Update_Newnormals();
 
 public:
 
