@@ -26,7 +26,12 @@ class ImgProcessor{
         void FilterImgStacksWithGaussian();
         void ScanImageEdgeDetection();
         void SaveOriginalImgs(const std::string& path);
+        void SaveOriginalImgsWithContourPoints(const std::string& path);
+        void SaveSobelImgsWithContourPoints(const std::string& path);
+        void GetContourPointSobelScores();
         void CalSobelScore();
+        
+        void CalContourPointsSobelScore();
 
         void CalVolumeGradients();
         void SampleVolumeGradients(size_t sample_step);
@@ -37,13 +42,15 @@ class ImgProcessor{
         void RunGradientsPipeline(const std::string& img_stack_path, const std::string& img_mask_stack_path, const std::string& out_path);
         void RunSinglePipeline(const std::string& img_stack_path, const std::string& point_path, const std::string& out_path);
         void RunBatchesPipeline(const std::string& img_stack_dir, const std::string& point_dir, const std::string& out_dir);
+        void SaveGradientAndSobelScorePair(const std::string& out_csv_path);
 
-        void CalSobelScore();
 
     private:
         Mat CalStructureTensor(const Vec3& gradeint);
         Mat CalStructureTensorGaussain(const Point3i& point);
         Vec3 CalPointGradient(const Point3i& point);
+        float CalSobelScoreByPoint(const Point3i& point);
+        void test_sobel_score();
 
     public:
         size_t volume_x_max_;
@@ -55,6 +62,7 @@ class ImgProcessor{
         std::vector<cv::Mat> img_stacks_;
         std::vector<cv::Mat> img_stacks_grey_;
         std::vector<cv::Mat> img_mask_stacks_;
+        std::vector<cv::Mat> img_stacks_sobels_;
         std::vector<cv::Mat> volume_gradient_z_;
         std::vector<cv::Mat> volume_gradient_x_;
         std::vector<cv::Mat> volume_gradient_y_;
@@ -64,7 +72,7 @@ class ImgProcessor{
         std::vector<Vec3> contour_sample_points_tangents_;
         std::vector<Vec3> contour_sample_points_gradients_;
         std::vector<float> contour_sample_points_projection_;
-
+        std::vector<float> contour_points_sobel_scores_;
         std::string contour_mask_overlay_output_path_;
 
         float max_gradient_norm_;

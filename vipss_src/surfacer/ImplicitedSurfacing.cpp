@@ -141,7 +141,6 @@ void Surfacer::GetCurSurface(vector<double>&v,vector<uint>&fv){
     for(int i=0;i<s_afaceSurface.num();++i){
         for(int j=0;j<3;++j)fv.push_back( beInd + s_afaceSurface[i][2-j]);
     }
-
 }
 
 

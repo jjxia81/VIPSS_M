@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <set>
 #include "opencv2/imgproc.hpp"
 
 #include <experimental/filesystem>
@@ -33,6 +34,19 @@ void ImgProcessor::LoadImgStacks(const std::string& img_stack_path)
         std::cout << "img cols : " << volume_x_max_ << std::endl;
         std::cout << "img rows : " << volume_y_max_ << std::endl;
     }
+    this->img_stacks_grey_.clear();
+    for(const auto& img : img_stacks_)
+    {
+        double minVal; 
+        double maxVal;
+        cv::minMaxLoc(img, &minVal, &maxVal);
+        cv::Mat new_img = (img - minVal) / (maxVal - minVal) * 255;
+        new_img.convertTo(new_img, CV_8U);
+        cv::Mat blur_img;
+        blur( new_img, blur_img, cv::Size(3,3));
+        this->img_stacks_grey_.push_back(blur_img);
+    }
+    
 }
 
 void ImgProcessor::FilterImgStacksWithGaussian()
@@ -372,8 +386,144 @@ void ImgProcessor::SaveOriginalImgs(const std::string& path)
     }
 }
 
+void ImgProcessor::SaveOriginalImgsWithContourPoints(const std::string& path)
+{
+    std::set<int> image_ids;
+    for(const auto& img_p : this->contour_sample_points_)
+    {
+        image_ids.insert(img_p.z);
+    }
+    std::vector<cv::Mat> new_images;
+    for(size_t i =0; i <this->img_stacks_.size(); ++i)
+    {
+        auto img = img_stacks_[i];
+        double minVal; 
+        double maxVal;
+        minMaxLoc(img, &minVal, &maxVal);
+        cv::Mat new_img =  (img - minVal) / (maxVal - minVal) * 255;
+        new_img.convertTo(new_img, CV_8U);
+        cv::Mat color_img;
+        cvtColor(new_img, color_img, cv::COLOR_GRAY2BGR);
+        new_images.push_back(color_img);
+    }
+    float min_score = 0; 
+    float max_score = 400;
+    for(size_t p_id = 0; p_id < this->contour_sample_points_.size(); ++p_id)
+    {
+        const auto& cur_p = contour_sample_points_[p_id];
+        auto& cur_img = new_images[cur_p.z];
+        cv::Vec3b& color = cur_img.at<cv::Vec3b>(cur_p.y, cur_p.x);
+        // float score = this->contour_points_sobel_scores_[p_id];
 
+        // float new_score = std::min(std::max(min_score, score), max_score);
+        float score = img_stacks_sobels_[cur_p.z].at<float>(cur_p.y, cur_p.x);
+        float new_score = std::min(std::max(min_score, score), max_score);
+        float ratio = (new_score - min_score) / max_score;
+        // std::cout << "score  " << score << std::endl;
+        // std::cout << "new_score  " << new_score << std::endl;
+        cur_img.at<cv::Vec3b>(cur_p.y, cur_p.x)[0] = 0;
+        cur_img.at<cv::Vec3b>(cur_p.y, cur_p.x)[1] = uchar(255 * ratio);;
+        cur_img.at<cv::Vec3b>(cur_p.y, cur_p.x)[2] = uchar(255 * (1 -ratio));
 
+    }
+
+    for(auto id : image_ids)
+    {
+        std::string out_img_path = path + "_" + std::to_string(id) + ".png";
+        cv::imwrite(out_img_path, new_images[id]);
+    }
+}
+
+void ImgProcessor::SaveSobelImgsWithContourPoints(const std::string& path)
+{
+    std::set<int> image_ids;
+    for(const auto& img_p : this->contour_sample_points_)
+    {
+        image_ids.insert(img_p.z);
+    }
+    std::vector<cv::Mat> new_images;
+    for(size_t i =0; i <this->img_stacks_sobels_.size(); ++i)
+    {
+        auto img = img_stacks_sobels_[i];
+        double minVal; 
+        double maxVal;
+        minMaxLoc(img, &minVal, &maxVal);
+        cv::Mat new_img =  (img - minVal) / (maxVal - minVal) * 255;
+        new_img.convertTo(new_img, CV_8U);
+        cv::Mat color_img;
+        cvtColor(new_img, color_img, cv::COLOR_GRAY2BGR);
+        new_images.push_back(color_img);
+    }
+    
+    float min_score = 0; 
+    float max_score = 300;
+    for(size_t p_id = 0; p_id < this->contour_sample_points_.size(); ++p_id)
+    {
+        const auto& cur_p = contour_sample_points_[p_id];
+        auto& cur_img = new_images[cur_p.z];
+
+        float sum_score = 0;
+        for(int ri = -1; ri < 2; ++ri)
+        {
+            for(int ci = -1; ci < 2; ++ci)
+            {
+                int y_i = std::min(cur_img.rows-1, std::max(0, cur_p.y + ri));
+                int x_i = std::min(cur_img.cols-1, std::max(0, cur_p.x + ci));
+                sum_score += img_stacks_sobels_[cur_p.z].at<float>(y_i, x_i);
+            }    
+        }
+        float score = sum_score / 9.0;
+        // float score = img_stacks_sobels_[cur_p.z].at<float>(cur_p.y, cur_p.x);
+        float new_score = std::min(std::max(min_score, score), max_score);
+        float ratio = (new_score - min_score) / max_score;
+        cur_img.at<cv::Vec3b>(cur_p.y, cur_p.x)[0] = 0;
+        cur_img.at<cv::Vec3b>(cur_p.y, cur_p.x)[1] = uchar(255 * ratio);;
+        cur_img.at<cv::Vec3b>(cur_p.y, cur_p.x)[2] = uchar(255 * (1 -ratio));
+    }
+
+    for(auto id : image_ids)
+    {
+        std::string out_img_path = path + "_" + std::to_string(id) + ".png";
+        cv::imwrite(out_img_path, new_images[id]);
+    }
+}
+
+void ImgProcessor::test_sobel_score()
+{
+    auto& cur_img = this->img_stacks_grey_[0];
+    cv::Mat new_img = cur_img;
+    cv::imshow("new image 00",  new_img);
+    cv::waitKey(0);
+    float min_score = 0; 
+    float max_score = 500;
+    // for(size_t i = 0; i < cur_img.rows; ++i)
+    // {
+    //     for(size_t j =0; j < cur_img.cols; ++j)
+    //     {
+    //         Point3i new_p(j, i, 0);
+    //         float score = CalSobelScoreByPoint(new_p);
+    //         float new_score = std::min(std::max(min_score, score), max_score);
+    //         float ratio = (new_score - min_score) / max_score;
+    //         new_img.at<uchar>(i, j) = uchar(int(ratio * 255));
+    //     }
+    // }
+    Mat gradX, gradY;
+    Sobel(new_img, gradX, CV_32F, 1, 0, 3);
+    Sobel(new_img, gradY, CV_32F, 0, 1, 3);
+     // Compute the magnitude of the gradient
+    Mat magnitude;
+    magnitude = abs(gradX) + abs(gradY);
+
+    // Normalize the magnitude to display it as an image
+    Mat normalizedMagnitude;
+    normalize(magnitude, normalizedMagnitude, 0, 255, cv::NORM_MINMAX, CV_8U);
+
+    // Display the original image and the edge-detected image
+    cv::imshow("Original Image", new_img);
+    cv::imshow("Edge-Detected Image", normalizedMagnitude);
+    cv::waitKey(0);
+
+}
 
 cv::RNG rng(12345);
 
@@ -630,49 +780,101 @@ void ImgProcessor::CalSobelScore()
     this->volume_gradient_z_.clear();
     size_t img_stack_num = img_stacks_.size();
     if(img_stack_num == 0) return;
-    size_t img_rows = img_stacks_[0].rows;
-    size_t img_cols = img_stacks_[0].cols;
-    auto img_type = img_stacks_[0].type();
+    // auto img_type = img_stacks_[0].type();
+    this->img_stacks_sobels_.clear();
+
+    for(size_t i = 0; i < img_stacks_grey_.size(); ++i)
+    {
+        const auto& cur_img = img_stacks_grey_[i];
+        Mat gradX, gradY;
+        Sobel(cur_img, gradX, CV_32F, 1, 0, 3);
+        Sobel(cur_img, gradY, CV_32F, 0, 1, 3);
+        // Compute the magnitude of the gradient
+        Mat magnitude;
+        magnitude = abs(gradX) + abs(gradY);
+        this->img_stacks_sobels_.push_back(magnitude);
+    }  
+}
+
+
+float ImgProcessor::CalSobelScoreByPoint(const Point3i& point)
+{
+    // auto cur_img = img_stacks_[point.z];
+    // std::cout << "img stack grey num : " << img_stacks_grey_.size() << std::endl;
+    auto cur_img = img_stacks_grey_[point.z];
+    float g_x = 0;
+    float g_y = 0;
     std::vector<std::vector<float>>  gradient_x = {{-1,  0,  1}, {-2, 0, 2}, {-1, 0, 1}};
     std::vector<std::vector<float>>  gradient_y = {{-1, -2, -1}, {0, 0, 0},  {1, 2, 1}};
-    
 
-    for(size_t i = 0; i < img_stack_num; ++i)
+    // std::vector<std::vector<float>>  gradient_x = {{-3,  0,  3}, {-10, 0, 10}, {-3, 0, 3}};
+    // std::vector<std::vector<float>>  gradient_y = {{-3, -10, -3}, {0, 0, 0},  {3, 10, 3}};
+
+    
+    // double minVal; 
+    // double maxVal;
+    // cv::minMaxLoc(cur_img, &minVal, &maxVal);
+    // cv::Mat new_img = (cur_img - minVal) / (maxVal - minVal) * 255;
+    // new_img.convertTo(new_img, CV_8U);
+    for(int m_r = 0; m_r < 3; ++m_r)
     {
-        auto cur_img = img_stacks_[i];
-        size_t rows = cur_img.rows;
-        size_t cols = cur_img.cols;
-
-        cv::Mat sobel_x = cv::Mat::zeros(rows, cols, cur_img.type());
-        cv::Mat sobel_y = cv::Mat::zeros(rows, cols, cur_img.type());
-        // cv::copyMakeBorder( cur_img, new_img, 1, 1, 1, 1, cv::BORDER_REPLICATE);
-        for(int i = 1; i < cur_img.rows - 1; ++i)
+        for(int n_r = 0; n_r < 3; ++n_r)
         {
-            for(int j = 1; j < cur_img.cols - 1; ++j)
-            {
-                float sum_x = 0;
-                float sum_y = 0;
-                for(int m = 0; m < 3; ++m)
-                {
-                    for(int n = 0; n < 3; ++n)
-                    {
-                        float param_x = gradient_x[m][n]; 
-                        float param_y = gradient_y[m][n];
-                        int r_i = i - m + 1;
-                        int c_j = j - n + 1;
-                        if(r_i < 0 || r_i > cur_img.rows) continue;
-                        if(c_j < 0 || c_j > cur_img.cols) continue;
-                        sum_x += param_x * cur_img.at<double>(r_i, c_j);  
-                        sum_y += param_y * cur_img.at<double>(r_i, c_j);  
-                    }
-                }
-                sobel_x.at<double>(i, j) = sum_x;
-                sobel_y.at<double>(i, j) = sum_y;
-            }
+            float param_x = gradient_x[m_r][n_r]; 
+            float param_y = gradient_y[m_r][n_r];
+            int r_i = point.y - m_r + 1;
+            int c_j = point.x - n_r + 1;
+            r_i = std::min(std::max(r_i, 0), cur_img.rows-1);
+            c_j = std::min(std::max(c_j, 0), cur_img.cols-1);
+            // g_x += param_x * cur_img.at<double>(r_i, c_j);  
+            // g_y += param_y * cur_img.at<double>(r_i, c_j);  
+            g_x += param_x * cur_img.at<uchar>(r_i, c_j);  
+            g_y += param_y * cur_img.at<uchar>(r_i, c_j);
         }
-        
     }
-    
+    float score = sqrt(g_x * g_x + g_y * g_y);
+    // std::cout << "score : " << score << std::endl;
+    return score;
+}
+
+void ImgProcessor::CalContourPointsSobelScore()
+{
+    this->contour_points_sobel_scores_.clear();
+    // std::cout << "!!! contour_sample_points_ size " << this->contour_sample_points_.size() << std::endl;
+    for(const auto& p : this->contour_sample_points_)
+    {
+        float score = CalSobelScoreByPoint(p);
+        this->contour_points_sobel_scores_.push_back(score);
+    }
+    // std::cout << "!!! score number " << this->contour_points_sobel_scores_.size() << std::endl;
+}
+
+void ImgProcessor::GetContourPointSobelScores()
+{
+    this->contour_points_sobel_scores_.clear();
+    float min_score = 0; 
+    float max_score = 0;
+    for(size_t p_id = 0; p_id < this->contour_sample_points_.size(); ++p_id)
+    {
+        const auto& cur_p = contour_sample_points_[p_id];
+        auto& cur_img = this->img_stacks_sobels_[cur_p.z];
+
+        float score = cur_img.at<float>(cur_p.y, cur_p.x);
+        this->contour_points_sobel_scores_.push_back(score);
+    }    
+}
+
+void ImgProcessor::SaveGradientAndSobelScorePair(const std::string& out_csv_path)
+{
+    std::fstream s_file{ out_csv_path, s_file.out };
+    for(size_t i = 0; i < this->contour_points_sobel_scores_.size(); ++ i)
+    {
+        float score = this->contour_points_sobel_scores_[i];
+        auto gradient = this->contour_sample_points_gradients_[i];
+        float gradient_len = sqrt(gradient.dot(gradient));
+        std::string p_str = std::to_string(score) + "," + std::to_string(gradient_len);
+        s_file <<  p_str << std::endl;
+    }
 }
 
 
@@ -680,6 +882,7 @@ void ImgProcessor::CalSobelScore()
 void ImgProcessor::RunSinglePipeline(const std::string& img_stack_path, const std::string& point_path, const std::string& out_gradient_path)
 {
     LoadImgStacks(img_stack_path);
+    // test_sobel_score();
     FilterImgStacksWithGaussian();
     LoadImgContourSamplePoints(point_path);
     CalSamplePointsGradients();
@@ -687,6 +890,8 @@ void ImgProcessor::RunSinglePipeline(const std::string& img_stack_path, const st
     CalSamplePointsGradientsTangentProjection();
     // std::string gradient_path = out_subdir + "/gradients.obj";
     SaveImgContourSamplePointsWithGradients(out_gradient_path);
+
+    
     // std::string out_point_path = out_subdir + "/contour_points.obj";
     // SaveImgContourSamplePoints(out_point_path);
 
@@ -694,6 +899,36 @@ void ImgProcessor::RunSinglePipeline(const std::string& img_stack_path, const st
 
 void ImgProcessor::RunBatchesPipeline(const std::string& img_stack_dir, const std::string& point_dir, const std::string& out_dir)
 {
+
+    const std::string gradient_dir = out_dir + "/gradient";
+    if(!fs::exists(gradient_dir))
+    {
+        fs::create_directory(gradient_dir);
+    }
+    const std::string out_point_dir = out_dir + "/point";
+    if(!fs::exists(out_point_dir))
+    {
+        fs::create_directory(out_point_dir);
+    }
+
+    const std::string img_dir = out_dir + "/img_contours";
+    if(!fs::exists(img_dir))
+    {
+        fs::create_directory(img_dir);
+    }
+
+    const std::string sobel_dir = out_dir + "/img_sobels";
+    if(!fs::exists(sobel_dir))
+    {
+        fs::create_directory(sobel_dir);
+    }
+
+    const std::string csv_dir = out_dir + "/csv_sobels";
+    if(!fs::exists(csv_dir))
+    {
+        fs::create_directory(csv_dir);
+    }
+
     for(const auto & entry : fs::directory_iterator(img_stack_dir))
     {
         max_gradient_norm_ = 0.0;
@@ -705,13 +940,42 @@ void ImgProcessor::RunBatchesPipeline(const std::string& img_stack_dir, const st
             std::string file_name = file.substr(0, found);
             std::cout << file_name << std::endl; 
             std::string point_path = point_dir + "/" + file_name + "/contour_points/opt_cv_contour_5/opt_cv_contour_4.xyz";
-            std::string out_gradient_path = out_dir + "/" + file_name + "_gradient.obj";
-            std::string out_point_path = out_dir + "/" + file_name + "_points.obj";
+            std::string out_gradient_path = gradient_dir + "/" + file_name + "_gradient.obj";
+            std::string out_point_path = out_point_dir + "/" + file_name + "_points.obj";
             if(fs::exists(point_path))
             {
                 RunSinglePipeline(fs::path(entry), point_path, out_gradient_path);
                 SaveImgContourSamplePoints(out_point_path);
             }
+            std::string contour_img_dir = img_dir + "/" + file_name + "_imgs";
+            std::cout << "save contour dir 00: " << contour_img_dir << std::endl;
+            if( !fs::exists(contour_img_dir))
+            {
+                fs::create_directory(contour_img_dir);
+            }
+            std::cout << "save contour dir : " << contour_img_dir << std::endl;
+            std::cout << "CalContourPointsSobelScore start " << std::endl;
+            // CalContourPointsSobelScore();
+            // std::cout << "CalContourPointsSobelScore succeed " << std::endl;
+
+            // std::cout << "save contour image dir : " << contour_img_dir << std::endl;
+           
+            CalSobelScore();
+
+            SaveOriginalImgsWithContourPoints(contour_img_dir + "/" + file_name);
+            std::string sobel_img_dir = sobel_dir + "/" + file_name + "_imgs";
+            std::cout << "save sobel_img_dir dir 00: " << sobel_img_dir << std::endl;
+            if( !fs::exists(sobel_img_dir))
+            {
+                fs::create_directory(sobel_img_dir);
+            }
+            SaveSobelImgsWithContourPoints(sobel_img_dir + "/" + file_name);
+
+            CalSamplePointsGradients();
+            GetContourPointSobelScores();
+            std::string out_path = csv_dir + "/" + file_name + ".csv";
+            SaveGradientAndSobelScorePair(out_path);
+          
         }
         // break;
     }
