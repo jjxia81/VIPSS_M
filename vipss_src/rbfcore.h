@@ -6,7 +6,7 @@
 
 #include <iostream>
 #include <vector>
-#include "Solver.h"
+// #include "Solver.h"
 #include "ImplicitedSurfacing.h"
 //#include "eigen3/Eigen/Dense"
 #include <armadillo>
@@ -281,7 +281,7 @@ public:
 
 public:
 
-    int Opt_Hermite_PredictNormal_UnitNormal();
+    // int Opt_Hermite_PredictNormal_UnitNormal();
 
 public:
 
@@ -317,7 +317,7 @@ public:
 
 public:
 
-    Solution_Struct sol;
+    // Solution_Struct sol;
 
     vector<int>record_partition;
     vector<string>record_partition_name;
@@ -334,8 +334,8 @@ public:
     double setup_time, init_time, solve_time, callfunc_time,invM_time, setK_time, surf_time;
     vector<double>setup_timev, init_timev, solve_timev, callfunc_timev,invM_timev,setK_timev;
 
-    void Record();
-    void Record(RBF_METHOD method, RBF_Kernal kernal, Solution_Struct &rsol, double time);
+    // void Record();
+    // void Record(RBF_METHOD method, RBF_Kernal kernal, Solution_Struct &rsol, double time);
     void AddPartition(string pname);
     void Print_Record();
     void Print_TimerRecord(string fname);

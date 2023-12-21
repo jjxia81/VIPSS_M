@@ -1,6 +1,5 @@
 #include "rbfcore.h"
 #include "utility.h"
-#include "Solver.h"
 #include <armadillo>
 #include <fstream>
 #include <limits>
@@ -301,48 +300,48 @@ void RBF_Core::Write_Surface(string fname){
 /**********************************************************/
 
 
-void RBF_Core::Record(RBF_METHOD method, RBF_Kernal kernal, Solution_Struct &rsol, double time){
+// void RBF_Core::Record(RBF_METHOD method, RBF_Kernal kernal, Solution_Struct &rsol, double time){
 
-    npoints.push_back(npt);
+//     npoints.push_back(npt);
 
-    record_initmethod.push_back(mp_RBF_INITMETHOD[curInitMethod]);
-    record_method.push_back(mp_RBF_METHOD[method]);
-    record_kernal.push_back(mp_RBF_Kernal[kernal]);
-    record_initenergy.push_back(rsol.init_energy);
-    record_energy.push_back(rsol.energy);
-    record_time.push_back(time);
-
-
-    setup_timev.push_back(setup_time);
-    init_timev.push_back(init_time);
-    solve_timev.push_back(solve_time);
-    callfunc_timev.push_back(callfunc_time);
-    invM_timev.push_back(invM_time);
-    setK_timev.push_back(setK_time);
-
-}
-
-void RBF_Core::Record(){
-
-    //cout<<"record"<<endl;
-    npoints.push_back(npt);
-
-    record_initmethod.push_back(mp_RBF_INITMETHOD[curInitMethod]);
-    record_method.push_back(mp_RBF_METHOD[curMethod]);
-    //record_kernal.push_back(mp_RBF_Kernal[kernal]);
-    record_initenergy.push_back(sol.init_energy);
-    record_energy.push_back(sol.energy);
-    //cout<<"record"<<endl;
+//     record_initmethod.push_back(mp_RBF_INITMETHOD[curInitMethod]);
+//     record_method.push_back(mp_RBF_METHOD[method]);
+//     record_kernal.push_back(mp_RBF_Kernal[kernal]);
+//     record_initenergy.push_back(rsol.init_energy);
+//     record_energy.push_back(rsol.energy);
+//     record_time.push_back(time);
 
 
-//    setup_timev.push_back(setup_time);
-//    init_timev.push_back(init_time);
-//    solve_timev.push_back(solve_time);
-//    callfunc_timev.push_back(callfunc_time);
-//    invM_timev.push_back(invM_time);
-//    setK_timev.push_back(setK_time);
-   // cout<<"record end"<<endl;
-}
+//     setup_timev.push_back(setup_time);
+//     init_timev.push_back(init_time);
+//     solve_timev.push_back(solve_time);
+//     callfunc_timev.push_back(callfunc_time);
+//     invM_timev.push_back(invM_time);
+//     setK_timev.push_back(setK_time);
+
+// }
+
+// void RBF_Core::Record(){
+
+//     //cout<<"record"<<endl;
+//     npoints.push_back(npt);
+
+//     record_initmethod.push_back(mp_RBF_INITMETHOD[curInitMethod]);
+//     record_method.push_back(mp_RBF_METHOD[curMethod]);
+//     //record_kernal.push_back(mp_RBF_Kernal[kernal]);
+//     record_initenergy.push_back(sol.init_energy);
+//     record_energy.push_back(sol.energy);
+//     //cout<<"record"<<endl;
+
+
+// //    setup_timev.push_back(setup_time);
+// //    init_timev.push_back(init_time);
+// //    solve_timev.push_back(solve_time);
+// //    callfunc_timev.push_back(callfunc_time);
+// //    invM_timev.push_back(invM_time);
+// //    setK_timev.push_back(setK_time);
+//    // cout<<"record end"<<endl;
+// }
 
 void RBF_Core::AddPartition(string pname){
 

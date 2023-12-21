@@ -21,7 +21,7 @@ typedef unsigned long long ulonglong;
 #include <stdio.h>
 #include <string>
 #include <vector>
-#include "dirent.h"
+
 namespace MyUtility {
 
 #define UINTFLAG  std::numeric_limits<unsigned int>::max()
@@ -413,50 +413,6 @@ bool isPointOnSeg(const T *v, const T *v1, const T *v2, const T THRES){
 }//namespace
 
 
-using namespace std;
-inline void GetFolders(string path, vector<string>&files){
-    DIR *dir;
-    struct dirent *ent;
-    if ((dir = opendir (path.data())) != NULL) {
-        /* print all the files and directories within directory */
-        while ((ent = readdir (dir)) != NULL) {
-            if(ent->d_type == DT_DIR)if(ent->d_name[0]!='.'){
-                files.emplace_back(ent->d_name);
-            }
-        }
-        closedir (dir);
-    } else {
-        /* could not open directory */
-        perror ("could not open directory");
-    }
-
-}
-
-inline void GetFiles(string path, vector<string>&files){
-    DIR *dir;
-    struct dirent *ent;
-    if ((dir = opendir (path.data())) != NULL) {
-        /* print all the files and directories within directory */
-        while ((ent = readdir (dir)) != NULL) {
-            if(ent->d_type == DT_REG)files.emplace_back(ent->d_name);
-        }
-        closedir (dir);
-    } else {
-        /* could not open directory */
-        perror ("could not open directory");
-    }
-}
-
-inline void GetFiles(string path, vector<string>&files, string match_ext){
-    GetFiles(path,files);
-    vector<string>rev_files;
-    for(auto &a: files){
-        string ext;
-        MyUtility::GetExtName(a,ext);
-        if(ext==match_ext)rev_files.push_back(a);
-    }
-    swap(files,rev_files);
-}
 
 
 #endif

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.6)
-project(vipss)
+project(vipss_m)
 
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -O3 ")
@@ -10,9 +10,9 @@ message(STATUS "$ENV{CONDA_PREFIX}")
 
 find_package(OpenMP REQUIRED)
 
-find_package(NLopt REQUIRED)
-set(NLOPT_LIB_DIR "")
-set(NLOPT_LIB ${NLOPT_LIBRARIES})
+# find_package(NLopt REQUIRED)
+# set(NLOPT_LIB_DIR "")
+# set(NLOPT_LIB ${NLOPT_LIBRARIES})
 
 find_package(Armadillo REQUIRED)
 set(ARMADILLO_LIB_DIRS "")
@@ -37,9 +37,9 @@ LINK_DIRECTORIES(${ARMADILLO_LIB_DIRS} ${NLOPT_LIB_DIR})
 add_library(rbf ${SRC_LIST})
 target_link_libraries(rbf ${YAML_CPP_LIBRARIES} OpenMP::OpenMP_CXX)
 add_library(surface ${SURFACER_LIST})
-add_executable(${PROJECT_NAME} main.cpp )
+# add_executable(${PROJECT_NAME} main.cpp )
 
-target_link_libraries(${PROJECT_NAME} rbf surface ${ARMADILLO_LIB} ${NLOPT_LIB} ${YAML_CPP_LIBRARIES} OpenMP::OpenMP_CXX)
+# target_link_libraries(${PROJECT_NAME} rbf surface ${ARMADILLO_LIB} ${NLOPT_LIB} ${YAML_CPP_LIBRARIES} OpenMP::OpenMP_CXX)
 
 file(GLOB SOURCE_FILES
      "src/*.h"
@@ -54,8 +54,8 @@ target_link_libraries(ImgPro ${OpenCV_LIBS})
 add_executable(img_pro main0.cpp)
 target_link_libraries(img_pro ImgPro ${OpenCV_LIBS} stdc++fs)
 
-add_executable(test_fun test.cpp )
-target_link_libraries(test_fun rbf surface ${ARMADILLO_LIB} ${NLOPT_LIB} ${YAML_CPP_LIBRARIES} OpenMP::OpenMP_CXX)
+add_executable(${PROJECT_NAME} main.cpp )
+target_link_libraries(${PROJECT_NAME} rbf surface ${ARMADILLO_LIB}  ${YAML_CPP_LIBRARIES} OpenMP::OpenMP_CXX)
 
 
 find_package(CGAL REQUIRED)
@@ -63,3 +63,6 @@ include_directories( ${CGAL_dir} )
 message(STATUS ${CGAL_dir})
 add_executable(normal_estimator normal_estimation.cpp)
 target_link_libraries(normal_estimator stdc++fs )
+
+add_executable(mesh_slicer mesh_slicer.cpp)
+target_link_libraries(mesh_slicer stdc++fs )

@@ -1,6 +1,5 @@
 #include "rbfcore.h"
 #include "utility.h"
-#include "Solver.h"
 #include <armadillo>
 #include <fstream>
 #include <limits>
@@ -429,62 +428,62 @@ double optfunc_Hermite(const vector<double>&x, vector<double>&grad, void *fdata)
 
 
 
-int RBF_Core::Opt_Hermite_PredictNormal_UnitNormal(){
+// int RBF_Core::Opt_Hermite_PredictNormal_UnitNormal(){
 
 
-    sol.solveval.resize(npt * 2);
+//     sol.solveval.resize(npt * 2);
 
-    for(int i=0;i<npt;++i){
-        double *veccc = initnormals.data()+i*3;
-        {
-            //MyUtility::normalize(veccc);
-            sol.solveval[i*2] = atan2(sqrt(veccc[0]*veccc[0]+veccc[1]*veccc[1]),veccc[2] );
-            sol.solveval[i*2 + 1] = atan2( veccc[1], veccc[0]   );
-        }
+//     for(int i=0;i<npt;++i){
+//         double *veccc = initnormals.data()+i*3;
+//         {
+//             //MyUtility::normalize(veccc);
+//             sol.solveval[i*2] = atan2(sqrt(veccc[0]*veccc[0]+veccc[1]*veccc[1]),veccc[2] );
+//             sol.solveval[i*2 + 1] = atan2( veccc[1], veccc[0]   );
+//         }
 
-    }
-    //cout<<"smallvec: "<<smallvec<<endl;
+//     }
+//     //cout<<"smallvec: "<<smallvec<<endl;
 
-    if(1){
-        vector<double>upper(npt*2);
-        vector<double>lower(npt*2);
-        for(int i=0;i<npt;++i){
-            upper[i*2] = 2 * my_PI;
-            upper[i*2 + 1] = 2 * my_PI;
+//     if(1){
+//         vector<double>upper(npt*2);
+//         vector<double>lower(npt*2);
+//         for(int i=0;i<npt;++i){
+//             upper[i*2] = 2 * my_PI;
+//             upper[i*2 + 1] = 2 * my_PI;
 
-            lower[i*2] = -2 * my_PI;
-            lower[i*2 + 1] = -2 * my_PI;
-        }
+//             lower[i*2] = -2 * my_PI;
+//             lower[i*2 + 1] = -2 * my_PI;
+//         }
 
-        countopt = 0;
-        acc_time = 0;
+//         countopt = 0;
+//         acc_time = 0;
 
-        //LocalIterativeSolver(sol,kk==0?normals:newnormals,300,1e-7);
-        Solver::nloptwrapper(lower,upper,optfunc_Hermite,this,1e-7,3000,sol);
-        cout<<"number of call: "<<countopt<<" t: "<<acc_time<<" ave: "<<acc_time/countopt<<endl;
-        callfunc_time = acc_time;
-        solve_time = sol.time;
-        //for(int i=0;i<npt;++i)cout<< sol.solveval[i]<<' ';cout<<endl;
-    }
+//         //LocalIterativeSolver(sol,kk==0?normals:newnormals,300,1e-7);
+//         // Solver::nloptwrapper(lower,upper,optfunc_Hermite,this,1e-7,3000,sol);
+//         cout<<"number of call: "<<countopt<<" t: "<<acc_time<<" ave: "<<acc_time/countopt<<endl;
+//         callfunc_time = acc_time;
+//         solve_time = sol.time;
+//         //for(int i=0;i<npt;++i)cout<< sol.solveval[i]<<' ';cout<<endl;
+//     }
 
-    newnormals.resize(npt*3);
-    arma::vec y(npt*4);
-    for(int i=0;i<npt;++i)y(i) = 0;
-    for(int i=0;i<npt;++i){
+//     newnormals.resize(npt*3);
+//     arma::vec y(npt*4);
+//     for(int i=0;i<npt;++i)y(i) = 0;
+//     for(int i=0;i<npt;++i){
 
-        double a = sol.solveval[i*2], b = sol.solveval[i*2+1];
-        newnormals[i*3]   = y(npt+i) = sin(a) * cos(b);
-        newnormals[i*3+1] = y(npt+i+npt) = sin(a) * sin(b);
-        newnormals[i*3+2] = y(npt+i+npt*2) = cos(a);
-        MyUtility::normalize(newnormals.data()+i*3);
-    }
+//         double a = sol.solveval[i*2], b = sol.solveval[i*2+1];
+//         newnormals[i*3]   = y(npt+i) = sin(a) * cos(b);
+//         newnormals[i*3+1] = y(npt+i+npt) = sin(a) * sin(b);
+//         newnormals[i*3+2] = y(npt+i+npt*2) = cos(a);
+//         MyUtility::normalize(newnormals.data()+i*3);
+//     }
 
-    Set_RBFCoef(y);
+//     Set_RBFCoef(y);
 
-    //sol.energy = arma::dot(a,M*a);
-    cout<<"Opt_Hermite_PredictNormal_UnitNormal"<<endl;
-    return 1;
-}
+//     //sol.energy = arma::dot(a,M*a);
+//     cout<<"Opt_Hermite_PredictNormal_UnitNormal"<<endl;
+//     return 1;
+// }
 
 void RBF_Core::Update_Newnormals()
 {
@@ -525,55 +524,55 @@ void RBF_Core::Set_RBFCoef(arma::vec &y){
 
 
 
-int RBF_Core::Lamnbda_Search_GlobalEigen(){
+// int RBF_Core::Lamnbda_Search_GlobalEigen(){
 
-    vector<double>lamnbda_list({0, 0.001, 0.01, 0.1, 1});
-    //vector<double>lamnbda_list({  0.5,0.6,0.7,0.8,0.9,1,1.1,1.5,2,3});
-    //lamnbda_list.clear();
-    //for(double i=1.5;i<2.5;i+=0.1)lamnbda_list.push_back(i);
-    //vector<double>lamnbda_list({0});
-    vector<double>initen_list(lamnbda_list.size());
-    vector<double>finalen_list(lamnbda_list.size());
-    vector<vector<double>>init_normallist;
-    vector<vector<double>>opt_normallist;
+//     vector<double>lamnbda_list({0, 0.001, 0.01, 0.1, 1});
+//     //vector<double>lamnbda_list({  0.5,0.6,0.7,0.8,0.9,1,1.1,1.5,2,3});
+//     //lamnbda_list.clear();
+//     //for(double i=1.5;i<2.5;i+=0.1)lamnbda_list.push_back(i);
+//     //vector<double>lamnbda_list({0});
+//     vector<double>initen_list(lamnbda_list.size());
+//     vector<double>finalen_list(lamnbda_list.size());
+//     vector<vector<double>>init_normallist;
+//     vector<vector<double>>opt_normallist;
 
-    lamnbda_list_sa = lamnbda_list;
-    for(int i=0;i<lamnbda_list.size();++i){
+//     lamnbda_list_sa = lamnbda_list;
+//     for(int i=0;i<lamnbda_list.size();++i){
 
-        Set_HermiteApprox_Lamnda(lamnbda_list[i]);
+//         Set_HermiteApprox_Lamnda(lamnbda_list[i]);
 
-        if(curMethod==Hermite_UnitNormal){
-            Solve_Hermite_PredictNormal_UnitNorm();
-        }
+//         if(curMethod==Hermite_UnitNormal){
+//             Solve_Hermite_PredictNormal_UnitNorm();
+//         }
 
-        //Solve_Hermite_PredictNormal_UnitNorm();
-        OptNormal(1);
+//         //Solve_Hermite_PredictNormal_UnitNorm();
+//         // OptNormal(1);
 
-        initen_list[i] = sol.init_energy;
-        finalen_list[i] = sol.energy;
+//         // initen_list[i] = sol.init_energy;
+//         // finalen_list[i] = sol.energy;
 
-        init_normallist.emplace_back(initnormals);
-        opt_normallist.emplace_back(newnormals);
-    }
+//         init_normallist.emplace_back(initnormals);
+//         opt_normallist.emplace_back(newnormals);
+//     }
 
-    lamnbdaGlobal_Be.emplace_back(initen_list);
-    lamnbdaGlobal_Ed.emplace_back(finalen_list);
+//     lamnbdaGlobal_Be.emplace_back(initen_list);
+//     lamnbdaGlobal_Ed.emplace_back(finalen_list);
 
-    cout<<std::setprecision(8);
-    for(int i=0;i<initen_list.size();++i){
-        cout<<lamnbda_list[i]<<": "<<initen_list[i]<<" -> "<<finalen_list[i]<<endl;
-    }
+//     cout<<std::setprecision(8);
+//     for(int i=0;i<initen_list.size();++i){
+//         cout<<lamnbda_list[i]<<": "<<initen_list[i]<<" -> "<<finalen_list[i]<<endl;
+//     }
 
-    int minind = min_element(finalen_list.begin(),finalen_list.end()) - finalen_list.begin();
-    cout<<"min energy: "<<endl;
-    cout<<lamnbda_list[minind]<<": "<<initen_list[minind]<<" -> "<<finalen_list[minind]<<endl;
+//     int minind = min_element(finalen_list.begin(),finalen_list.end()) - finalen_list.begin();
+//     cout<<"min energy: "<<endl;
+//     cout<<lamnbda_list[minind]<<": "<<initen_list[minind]<<" -> "<<finalen_list[minind]<<endl;
 
 
-    initnormals = init_normallist[minind];
-    SetInitnormal_Uninorm();
-    newnormals = opt_normallist[minind];
-	return 1;
-}
+//     initnormals = init_normallist[minind];
+//     SetInitnormal_Uninorm();
+//     newnormals = opt_normallist[minind];
+// 	return 1;
+// }
 
 
 
