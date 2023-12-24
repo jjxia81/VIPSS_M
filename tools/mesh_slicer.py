@@ -7,16 +7,12 @@ from CGAL.CGAL_AABB_tree import AABB_tree_Polyhedron_3_Halfedge_handle as ABTH
 # from CGAL.CGAL_AABB_tree import
 from CGAL.CGAL_Polyhedron_3 import Polyhedron_3, Polyhedron_modifier, Polyhedron_3_Halfedge_handle
 import CGAL.CGAL_Polygon_mesh_processing as PMP
-# import 
 import CGAL.CGAL_Surface_mesher as CGMesh
 from CGAL.CGAL_Surface_mesher import Surface_mesh_default_criteria_3 as Mesh_3
-# import 
-# from CGAL.CGAL_AABB_tree import AABB_tree_Segment_3_soup as 
-# Polyhedron_3
-# import 
 from plyfile import PlyData, PlyElement
-
 # mesh = trimesh.load_mesh(mesh_dir)
+
+in_plane_normal = True
 
 def get_bbox(vertices):
     min_p = np.min(vertices, axis=0)
@@ -28,11 +24,15 @@ def get_bbox(vertices):
 def generate_parallel_slice_planes(min_p, max_p, s_num, axis):
     min_val = min_p[axis]
     max_val = max_p[axis]
-    step = (max_val - min_val) / (s_num + 1)
+    step = (max_val - min_val) / (s_num - 1)
     # point = np.array([0, 0, 0])
     planes = []
     for i in range(s_num):
-        p_val = min_val + step * (i + 1)
+        p_val = min_val + step * i 
+        if i == 0:
+            p_val += 0.2 * step
+        if i == s_num -1:
+            p_val -= 0.2 * step 
         p_point = [0, 0, 0]
         p_point[axis] = p_val
         p_normal = [0, 0, 0]
@@ -41,6 +41,8 @@ def generate_parallel_slice_planes(min_p, max_p, s_num, axis):
         p_normal = Vector_3(p_normal[0], p_normal[1], p_normal[2])
         cut_plane = Plane_3(p_point, p_normal)
         planes.append(cut_plane)
+        
+    
     return planes
     
 def construct_mesh_edges_abTree(mesh):
@@ -86,13 +88,17 @@ def extract_intersect_points_and_normals(intersections, cut_plane):
         cur_p = Plane_3(pa, pb, pc)
         pn = cur_p.orthogonal_vector()
         pn = pn / math.sqrt(pn.squared_length())
-        cpn = cut_plane.orthogonal_vector()
-        cpn = cpn / math.sqrt(cpn.squared_length())
-        pn =  pn - pn * cpn * cpn
-        pn = pn / math.sqrt(pn.squared_length())
-        ptns.append(pn)
+        if in_plane_normal:
+            cpn = cut_plane.orthogonal_vector()
+            cpn = cpn / math.sqrt(cpn.squared_length())
+            pn =  pn - pn * cpn * cpn
+            pn = pn / math.sqrt(pn.squared_length())
+            ptns.append(pn)
+        else:
+            ptns.append(pn)
         inter_p = inter_p.get_Point_3()
         pts.append(inter_p)
+            
     return pts, ptns
         # print(inter_p.x(), inter_p.y(), inter_p.z())
         # if inter_p.is_Point_3():
@@ -135,17 +141,38 @@ def sample_points_with_kdtree(pts, ptns, radius):
     return new_pts, new_ptns
         
 def mesh_slicing():
-    mesh_dir = '../data/cases/phone/phone_s.ply'
+    mesh_dir = '/home/jjxia/Documents/projects/VIPSS_M/data/torus_knot/torus_knot_thin_mesh.ply'
+    # mesh_dir = '/home/jjxia/Documents/projects/VIPSS_M/data/chickHeart/chickHeart_mesh.ply'
+    # mesh_dir = '/home/jjxia/Documents/projects/VIPSS_M/data/rect_torus/rect_torus_ori_mesh4.ply'
     ori_mesh = trimesh.load_mesh(mesh_dir)
-    mesh, abTree = construct_mesh_edges_abTree(ori_mesh)
+    
     min_p, max_p = get_bbox(ori_mesh.vertices)
-    axis = 0
-    s_num = 8
-    radius = 0.005
-    slice_planes_x = generate_parallel_slice_planes(min_p, max_p, s_num, axis)
-    axis = 2
-    slice_planes_z = generate_parallel_slice_planes(min_p, max_p, s_num, axis)
-    slice_planes = slice_planes_x + slice_planes_z
+    data_range = max_p - min_p
+    bbox_center = data_range / 2.0 + min_p
+    print('center', bbox_center)
+    ori_mesh.vertices = ori_mesh.vertices - bbox_center
+    min_p, max_p = get_bbox(ori_mesh.vertices)
+    max_scale = np.max(max_p)
+    
+    mesh_dir = '/home/jjxia/Documents/projects/VIPSS_M/data/torus_knot/torus_knot_thin_mesh.ply'
+    
+    trimesh.save(filename=None, ignore_discard=False, ignore_expires=False)
+    # if max_scale > 1.0:
+    #     ori_mesh.vertices = ori_mesh.vertices/max_scale
+    # if max_scale < 1.0:
+    ori_mesh.vertices = ori_mesh.vertices/max_scale
+    min_p, max_p = get_bbox(ori_mesh.vertices)
+    mesh, abTree = construct_mesh_edges_abTree(ori_mesh)
+    axis_list = [0]
+    s_nums = [10]
+    radius = 0.002
+    slice_planes = []
+    # for axis in axis_list:
+    for i in range(len(axis_list)):
+        axis = axis_list[i]
+        s_num = s_nums[i]
+        slice_planes_ax = generate_parallel_slice_planes(min_p, max_p, s_num, axis)
+        slice_planes = slice_planes + slice_planes_ax
     pts_all = []
     ptns_all = []
     # for i in range(slice_planes):
@@ -159,14 +186,14 @@ def mesh_slicing():
         # break
     
     # print(pts_all)
-    
     # plane_p = Point_3(0, 0, 0)
     # plane_n = Vector_3(0,0, 1)
     # q_plane = Plane_3(plane_p, plane_n)
     # intersections = query_plane_intersection(abTree, q_plane)
     # pts, ptns = extract_intersect_points_and_normals(intersections, q_plane)
-    out_dir = '../data/cases/phone/phone_s_ptns.ply'
+    # out_dir = '../data/cases/twist_star/twist_star_sample_ptns.ply'
     # radius = 0.005
+    out_dir = './torus_knot_thin_sample_ptns.ply'
     # new_pts, new_ptns = sample_points_with_kdtree(pts, ptns, radius)
     save_ptns(pts_all, ptns_all, out_dir)
 
