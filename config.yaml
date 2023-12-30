@@ -1,31 +1,22 @@
 debug: false
-# points_dir: /home/jjxia/Documents/projects/VIPSS/data/torus/multisample_n50/noise_normal.ply
-# points_dir: /home/jjxia/Documents/projects/VIPSS/data/bathtub/input_normal.ply
-# points_dir: /home/jjxia/Documents/projects/VIPSS/data/planck/multisample_n4000/input_normal.ply
-# points_dir: /home/jjxia/Documents/projects/VIPSS_M/data/rotate_ovals3/rotate_ovals3.ply
-points_dir: /home/jjxia/Documents/projects/VIPSS_M/data/cases/phone/phone_s_ptns.ply
-# points_dir: oni_copy.ply
-# points_dir: ../data/torus_en/2000.ply
-# points_dir: ../data/cases/hand_ok/hand_ok_out_ptn.ply
-# points_dir: /home/jjxia/Documents/projects/VIPSS/data/phone/input.ply
-# points_dir: /home/jjxia/Documents/projects/VIPSS/data/torus/parallelcut/input.ply
-graidents_dir: /home/jjxia/Documents/projects/VIPSS/data/torus/multisample_n50/noise_gradients.ply
-surface_weight: 1.0
-smooth_lambda: 0.001
-normal_beta: 0.0000001
-# normal_beta: 0.0
+points_dir: ..\data\torus_sample\1600.ply
+out_dir:  ..\data\torus_sample\1600\1600
+smooth_lambda: 0.1
+normal_beta: 1.0
 volumn_dim: 100 
+enable_constriants: true # sum(a_i) = 0, sum(a_i * x) + sum(b_i) = 0 
 save_inputs: true
-save_visualization: true
-save_estimate_normal: true
+save_estimate_normal: true # save rbf normal lines 
+save_visualization: true   # save normal lines
 save_eigen_vec: false
-out_dir: ../data/phone/phone_s
-use_gradient: false
-use_confidence: false
 use_scan_data: false
+use_gradient: false # only should be used when input is scan image data 
+surface_weight: 1.0  # not used 
+graidents_dir: /home/jjxia/Documents/projects/VIPSS/data/torus/multisample_n50/noise_gradients.ply
+use_confidence: false
 data_id: 6007
-data_dir: /home/jjxia/Documents/projects/All_Elbow/contours_3/
-pt_normal_folder: /contour_points/contour_ptnormal_6/
-pt_gradient_folder: /contour_points/gradients_tangent_6/
+data_dir: ../All_Elbow/contours_3/
+pt_normal_folder: ../contour_points/contour_ptnormal_6/
+pt_gradient_folder: ../contour_points/gradients_tangent_6/
 pt_normal_file: contour_ptnormal_6.ply
 pt_gradient_file: gradients_tangent_6.ply

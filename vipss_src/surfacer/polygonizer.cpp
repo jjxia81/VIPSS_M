@@ -39,9 +39,12 @@
 #elif  defined(__linux__)
 #include <stdlib.h>
 #else
-#include <sys/malloc.h>
+#include <malloc.h>
+//#include <sys/malloc.h>
 #endif
 #include <stdio.h>
+//#include <types.h>
+
 #include <sys/types.h>
 
 #define RES     10 /* # converge iterations    */

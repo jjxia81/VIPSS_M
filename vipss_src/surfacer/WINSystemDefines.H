@@ -3,7 +3,7 @@
 
 // #if defined(__linux__)
 #  include <string.h>
-#  include <strings.h>
+//#  include <strings.h>
 // #endif
 
 // #if defined(__linux__) || defined(powerpc) || defined(__APPLE__)

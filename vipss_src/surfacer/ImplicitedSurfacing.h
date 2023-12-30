@@ -3,7 +3,9 @@
 
 #include "Polygonizer.h"
 #include "../readers.h"
+//#include "utility.h"
 
+typedef unsigned int uint;
 
 class Surfacer{
 

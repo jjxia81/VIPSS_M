@@ -38,7 +38,7 @@ void RBF_Core::BuildK(RBF_Paras para){
     auto t2 = Clock::now();
     cout << "Build Time: " << (setup_time = std::chrono::nanoseconds(t2 - t1).count()/1e9) << endl<< endl;
     
-    if(0)BuildCoherentGraph();
+    //if(0)BuildCoherentGraph();
 }
 
 // void RBF_Core::InitNormal(RBF_Paras para){

@@ -14,6 +14,7 @@ struct RBF_Energy_PARA{
     bool save_estimate_normal = true;
     bool save_visualization = true;
     bool save_eigen_vec = false;
+    bool enable_constriants = false;
     int volumn_dim = 50;
     double e_lambda = 0.1;
     double e_beta = 0.1;
@@ -70,6 +71,7 @@ class RBF_Energy
         
         arma::mat F_s_; // surface term matrix F_s
         arma::mat F_g_; // gradient term matrix F_g
+        arma::mat G_mat_;
         arma::mat C_a_; // condition constraint matrix A
         arma::mat B_;
         arma::mat B_reduced_;

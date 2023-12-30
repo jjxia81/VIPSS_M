@@ -21,6 +21,8 @@ typedef unsigned long long ulonglong;
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include "utility.h"
+
 
 namespace MyUtility {
 

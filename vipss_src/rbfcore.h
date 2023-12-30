@@ -13,6 +13,9 @@
 #include <unordered_map>
 using namespace std;
 
+
+
+
 enum RBF_INPUT{
     ON,
     ONandNORMAL,
@@ -300,7 +303,7 @@ public:
 
     void Surfacing(int method, int n_voxels_1d);
 
-    void BuildCoherentGraph();
+    // void BuildCoherentGraph();
 
     void BatchInitEnergyTest(vector<double> &pts, vector<int> &labels, vector<double> &normals, vector<double> &tangents, vector<uint> &edges, RBF_Paras para);
 
