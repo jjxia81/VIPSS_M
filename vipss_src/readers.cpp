@@ -180,6 +180,81 @@ bool writePLYFile_VF(string filename,const vector<double>&vertices,const vector<
 }
 
 
+bool writePLYFile_VN_CO(string filename,const vector<double>&vertices, 
+                        const vector<double>&vertices_normal,
+                        const vector<uint8_t>&vertices_color){
+    filename = filename + ".ply";
+    ofstream outer(filename.data(), ofstream::out);
+    if (!outer.good()) {
+        cout << "Can not create output PLY file " << filename << endl;
+        return false;
+    }
+
+    int n_vertices = vertices.size()/3;
+    outer << "ply" <<endl;
+    outer << "format ascii 1.0"<<endl;
+    outer << "element vertex " << n_vertices <<endl;
+    outer << "property float x" <<endl;
+    outer << "property float y" <<endl;
+    outer << "property float z" <<endl;
+    outer << "property float nx" <<endl;
+    outer << "property float ny" <<endl;
+    outer << "property float nz" <<endl;
+    outer << "property uchar red" <<endl;
+    outer << "property uchar green" <<endl;
+    outer << "property uchar blue" <<endl;
+    outer << "end_header" <<endl;
+
+    for(int i=0;i<n_vertices;++i){
+        auto p_v = vertices.data()+i*3;
+        auto p_vn = vertices_normal.data()+i*3;
+        auto p_co = vertices_color.data() + i*3;
+        for(int j=0;j<3;++j)outer << p_v[j] << " ";
+        for(int j=0;j<3;++j)outer << p_vn[j] << " ";
+        for(int j=0;j<3;++j)outer << to_string(p_co[j]) << " ";
+        outer << endl;
+    }
+
+    outer.close();
+    cout<<"saving finish: "<<filename<<endl;
+    return true;
+}
+
+bool writePLYFile_CO(string filename,const vector<double>&vertices,
+                        const vector<uint8_t>&vertices_color){
+    filename = filename + ".ply";
+    ofstream outer(filename.data(), ofstream::out);
+    if (!outer.good()) {
+        cout << "Can not create output PLY file " << filename << endl;
+        return false;
+    }
+    int n_vertices = vertices.size()/3;
+    outer << "ply" <<endl;
+    outer << "format ascii 1.0"<<endl;
+    outer << "element vertex " << n_vertices <<endl;
+    outer << "property float x" <<endl;
+    outer << "property float y" <<endl;
+    outer << "property float z" <<endl;
+    outer << "property uchar red" <<endl;
+    outer << "property uchar green" <<endl;
+    outer << "property uchar blue" <<endl;
+    outer << "end_header" <<endl;
+
+    for(int i=0;i<n_vertices;++i){
+        auto p_v = vertices.data()+i*3;
+
+        auto p_co = vertices_color.data() + i*3;
+        for(int j=0;j<3;++j)outer << p_v[j] << " ";
+        for(int j=0;j<3;++j)outer << to_string(p_co[j]) << " ";
+        outer << endl;
+    }
+
+    outer.close();
+    cout<<"saving finish: "<<filename<<endl;
+    return true;
+}
+
+
 bool writePLYFile_VN(string filename,const vector<double>&vertices, const vector<double>&vertices_normal){
     filename = filename + ".ply";
     ofstream outer(filename.data(), ofstream::out);
@@ -214,6 +289,30 @@ bool writePLYFile_VN(string filename,const vector<double>&vertices, const vector
 }
 
 
+bool writePLYFile(string filename, const vector<double>&vertices){
+    filename = filename + ".ply";
+    ofstream outer(filename.data(), ofstream::out);
+    if (!outer.good()) {
+        cout << "Can not create output PLY file " << filename << endl;
+        return false;
+    }
+    int n_vertices = vertices.size()/3;
+    outer << "ply" <<endl;
+    outer << "format ascii 1.0"<<endl;
+    outer << "element vertex " << n_vertices <<endl;
+    outer << "property float x" <<endl;
+    outer << "property float y" <<endl;
+    outer << "property float z" <<endl;
+    outer << "end_header" <<endl;
+    for(int i=0;i<n_vertices;++i){
+        auto p_v = vertices.data()+i*3;
+        for(int j=0;j<3;++j)outer << p_v[j] << " ";
+        outer << endl;
+    }
+    outer.close();
+    cout<<"saving finish: "<<filename<<endl;
+    return true;
+}
 
 bool readPLYFile(string filename,  vector<double>&vertices, vector<double> &vertices_normal){
     ifstream fin(filename.data());
@@ -221,7 +320,6 @@ bool readPLYFile(string filename,  vector<double>&vertices, vector<double> &vert
         cout<<"Fail to open input file: "<<filename<<endl;
         return false;
     }
-
     vertices.clear();
     vertices_normal.clear();
     auto readVerticesAndNormal = [&vertices,&vertices_normal](stringstream &strs){
@@ -231,7 +329,6 @@ bool readPLYFile(string filename,  vector<double>&vertices, vector<double> &vert
     };
 
     string oneline;
-
     cout<<"reading: "<<filename<<endl;
     bool isstart = false;
     while( getline( fin, oneline ) ){

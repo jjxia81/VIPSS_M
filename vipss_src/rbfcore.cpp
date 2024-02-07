@@ -1,5 +1,6 @@
 #include "rbfcore.h"
 #include "utility.h"
+#include "Solver.h"
 #include <armadillo>
 #include <fstream>
 #include <limits>
@@ -81,6 +82,7 @@ double XCube_GradientDot_Kernel_2p(const double *p1, const double *p2, const dou
 
 void XCube_Hessian_Kernel_2p(const double *p1, const double *p2, double *H){
 
+
     double diff[3];
     for(int i=0;i<3;++i)diff[i] = p1[i] - p2[i];
     double len_dist  = sqrt(MyUtility::len(diff));
@@ -92,7 +94,10 @@ void XCube_Hessian_Kernel_2p(const double *p1, const double *p2, double *H){
             if(i==j)H[i*3+j] = 3 * pow(diff[i],2) / len_dist + 3 * len_dist;
             else H[i*3+j] = 3 * diff[i] * diff[j] / len_dist;
     }
+
+
     return;
+
 }
 
 void XCube_HessianDot_Kernel_2p(const double *p1, const double *p2, const double *p3, vector<double>&dotout){
@@ -235,46 +240,8 @@ inline double RBF_Core::Dist_Function(const double *p){
     double re = loc_part + poly_part;
     return re;
 
-}
-
-
-inline double RBF_Core::Dist_Function2(const double *p){
-
-    n_evacalls++;
-    double *p_pts = pts.data();
-    static arma::vec kern(npt), kb;
-    
-    kern.set_size(npt*4);
-    double G[3];
-    for(int i=0;i<npt;++i)kern(i) = Kernal_Function_2p(p_pts+i*3, p);
-    for(int i=0;i<npt;++i){
-        Kernal_Gradient_Function_2p(p,p_pts+i*3,G);
-        for(int j=0;j<3;++j)kern(npt+i*3+j) = G[j];
-        // for(int j=0;j<3;++j)kern(npt+i+j*npt) = G[j];
-    }
-
-    double loc_part = dot(kern,a);
-
-    
-    kb.set_size(4);
-    for(int i=0;i<3;++i)kb(i) = p[i];
-    kb(3) = 1;
-    
-    double poly_part = dot(kb,b);
-
-    if(0){
-        cout<<"dist: "<<p[0]<<' '<<p[1]<<' '<<p[2]<<' '<<p_pts[3]<<' '<<p_pts[4]<<' '<<p_pts[5]<<' '<<
-              Kernal_Function_2p(p,p_pts+3)<<endl;
-        for(int i=0;i<npt;++i)cout<<kern(i)<<' ';
-        for(int i=0;i<bsize;++i)cout<<kb(i)<<' ';
-        cout<<endl;
-    }
-
-    double re = loc_part + poly_part;
-    return re;
 
 }
-
 static RBF_Core * s_hrbf;
 double RBF_Core::Dist_Function(const R3Pt &in_pt){
     return s_hrbf->Dist_Function(&(in_pt[0]));
@@ -300,48 +267,48 @@ void RBF_Core::Write_Surface(string fname){
 /**********************************************************/
 
 
-// void RBF_Core::Record(RBF_METHOD method, RBF_Kernal kernal, Solution_Struct &rsol, double time){
+void RBF_Core::Record(RBF_METHOD method, RBF_Kernal kernal, Solution_Struct &rsol, double time){
 
-//     npoints.push_back(npt);
+    npoints.push_back(npt);
 
-//     record_initmethod.push_back(mp_RBF_INITMETHOD[curInitMethod]);
-//     record_method.push_back(mp_RBF_METHOD[method]);
-//     record_kernal.push_back(mp_RBF_Kernal[kernal]);
-//     record_initenergy.push_back(rsol.init_energy);
-//     record_energy.push_back(rsol.energy);
-//     record_time.push_back(time);
-
-
-//     setup_timev.push_back(setup_time);
-//     init_timev.push_back(init_time);
-//     solve_timev.push_back(solve_time);
-//     callfunc_timev.push_back(callfunc_time);
-//     invM_timev.push_back(invM_time);
-//     setK_timev.push_back(setK_time);
-
-// }
-
-// void RBF_Core::Record(){
-
-//     //cout<<"record"<<endl;
-//     npoints.push_back(npt);
-
-//     record_initmethod.push_back(mp_RBF_INITMETHOD[curInitMethod]);
-//     record_method.push_back(mp_RBF_METHOD[curMethod]);
-//     //record_kernal.push_back(mp_RBF_Kernal[kernal]);
-//     record_initenergy.push_back(sol.init_energy);
-//     record_energy.push_back(sol.energy);
-//     //cout<<"record"<<endl;
+    record_initmethod.push_back(mp_RBF_INITMETHOD[curInitMethod]);
+    record_method.push_back(mp_RBF_METHOD[method]);
+    record_kernal.push_back(mp_RBF_Kernal[kernal]);
+    record_initenergy.push_back(rsol.init_energy);
+    record_energy.push_back(rsol.energy);
+    record_time.push_back(time);
 
 
-// //    setup_timev.push_back(setup_time);
-// //    init_timev.push_back(init_time);
-// //    solve_timev.push_back(solve_time);
-// //    callfunc_timev.push_back(callfunc_time);
-// //    invM_timev.push_back(invM_time);
-// //    setK_timev.push_back(setK_time);
-//    // cout<<"record end"<<endl;
-// }
+    setup_timev.push_back(setup_time);
+    init_timev.push_back(init_time);
+    solve_timev.push_back(solve_time);
+    callfunc_timev.push_back(callfunc_time);
+    invM_timev.push_back(invM_time);
+    setK_timev.push_back(setK_time);
+
+}
+
+void RBF_Core::Record(){
+
+    //cout<<"record"<<endl;
+    npoints.push_back(npt);
+
+    record_initmethod.push_back(mp_RBF_INITMETHOD[curInitMethod]);
+    record_method.push_back(mp_RBF_METHOD[curMethod]);
+    //record_kernal.push_back(mp_RBF_Kernal[kernal]);
+    record_initenergy.push_back(sol.init_energy);
+    record_energy.push_back(sol.energy);
+    //cout<<"record"<<endl;
+
+
+//    setup_timev.push_back(setup_time);
+//    init_timev.push_back(init_time);
+//    solve_timev.push_back(solve_time);
+//    callfunc_timev.push_back(callfunc_time);
+//    invM_timev.push_back(invM_time);
+//    setK_timev.push_back(setK_time);
+   // cout<<"record end"<<endl;
+}
 
 void RBF_Core::AddPartition(string pname){
 

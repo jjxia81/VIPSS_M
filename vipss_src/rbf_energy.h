@@ -1,28 +1,29 @@
+#pragma once
 #include "rbfcore.h"
 #include <memory>
 #include <string>
-#include <yaml-cpp/yaml.h>
+#include "rbf_energy_para.h"
 
-struct RBF_Energy_PARA{
-    bool enable_debug = false;
-    bool is_surfacing = true;
-    bool use_gradient = true;
-    bool use_confidence = false;
-    bool use_scan_data = false;
-    bool solve_with_Eigen = false;
-    bool save_inputs = true;
-    bool save_estimate_normal = true;
-    bool save_visualization = true;
-    bool save_eigen_vec = false;
-    bool enable_constriants = false;
-    int volumn_dim = 50;
-    double e_lambda = 0.1;
-    double e_beta = 0.1;
-    std::string mesh_points_path;
-    std::string gradients_path;
-    std::string out_dir;
-    void loadYamlFile(const std::string& yaml_path);
-};
+//struct RBF_Energy_PARA{
+//    bool enable_debug = false;
+//    bool is_surfacing = true;
+//    bool use_gradient = true;
+//    bool use_confidence = false;
+//    bool use_scan_data = false;
+//    bool solve_with_Eigen = false;
+//    bool save_inputs = true;
+//    bool save_estimate_normal = true;
+//    bool save_visualization = true;
+//    bool save_eigen_vec = false;
+//    bool enable_constriants = false;
+//    int volumn_dim = 50;
+//    double e_lambda = 0.1;
+//    double e_beta = 0.1;
+//    std::string mesh_points_path;
+//    std::string gradients_path;
+//    std::string out_dir;
+//    void loadYamlFile(const std::string& yaml_path);
+//};
 
 class RBF_Energy
 {
@@ -30,14 +31,13 @@ class RBF_Energy
         RBF_Energy();
         ~RBF_Energy();
         // void InitPara();
+        void SetRBFPara();
         void InitRBFCore();
         
         void SetPts(const std::string& ply_path);
-        
+        void SetPts(const std::vector<double>& points, std::vector<double>& normals);        
         void SolveConditionMatSVD();
-        // void ConstructEnergyMatrix();
 
-        
         void LoadPtsAndNormals(const std::string& ply_path);
         void RunTest(const std::string& ply_path, const std::string gradient_path=" ", bool is_gradient=false);
         void RunTest();
@@ -46,36 +46,52 @@ class RBF_Energy
         void SetOutdir(const std::string& dir);
         void SetEnergyParameters(const RBF_Energy_PARA& rbf_e_para);
         void EstimateRBFNormals();
+        void SolveRBF();
+        void NormalizePts();
 
+        double CalculateDuchonEnergy() const;
+        double CalculateGradientEnergy() const;
+        double CalculateSurfaceEnergy() const;
+        double CalculateAllEnergy() const;
+        void SolveVipss();
+        
     private:
-        void SetRBFPara();
+        
         void DebugLog(const std::string& log_str);
         void BuildSurfaceTermMat();
         void BuildGradientTermMat();
         void BuildMatrixB();
         void BuildConditionMat();
         void BuildHessianMat();
-        void BuildEnergyMatrixAndSolve();
+        void BuildEnergyMatrix();
+        void SolveEnergyMatrix();
         void BuildConfidenceMat();
         void ReduceBAndHMatWithSVD();
         void SolveReducedLinearSystem();
         void SaveFuncInputs();
+        void UpdateGradient();
+        void UpdateHAndBMat();
+        void SolveRBFIterate();
+        void CalNewNormalMat();
+        
+        
         // void SaveMatrix();
         // void ConvertArmaMatToEigenMat(const arma::mat& in_mat,  );
     
-        double CalculateDuchonEnergy() const;
-        double CalculateGradientEnergy() const;
-        double CalculateSurfaceEnergy() const;
+        
 
     public: 
         
         arma::mat F_s_; // surface term matrix F_s
         arma::mat F_g_; // gradient term matrix F_g
         arma::mat G_mat_;
+        arma::mat normal_mat_;
         arma::mat C_a_; // condition constraint matrix A
         arma::mat B_;
         arma::mat B_reduced_;
         arma::mat H_;
+        arma::mat H_v_;
+        arma::mat H_g_;
         arma::mat D_M_; // Duchon energy mat
         arma::mat alpha_s_;
         arma::mat alpha_g_;
@@ -91,7 +107,11 @@ class RBF_Energy
         arma::mat SVD_V_;
         arma::mat X_;
         arma::mat X_reduced_;
-        
+        std::vector<uint8_t> pt_colors_;
+        double beta_weights_ = 1.0;
+        size_t max_iter_num_ = 10;
+        double iter_threshold_ = 0.0001;
+        double normal_delt_avg_ = 0;
 
     private:
         std::shared_ptr<RBF_Core> rbf_core_;

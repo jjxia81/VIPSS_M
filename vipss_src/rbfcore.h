@@ -6,15 +6,12 @@
 
 #include <iostream>
 #include <vector>
-// #include "Solver.h"
+#include "Solver.h"
 #include "ImplicitedSurfacing.h"
 //#include "eigen3/Eigen/Dense"
 #include <armadillo>
 #include <unordered_map>
 using namespace std;
-
-
-
 
 enum RBF_INPUT{
     ON,
@@ -70,10 +67,6 @@ public:
     RBF_METHOD Method;
     RBF_Kernal Kernal;
     RBF_InitMethod InitMethod;
-
-    double para_lambda;
-    double para_beta;
-
     bool isusesparse;
     int polyDeg;
     double sigma;
@@ -98,6 +91,8 @@ class RBF_Core{
 
 public:
 
+
+
     int npt;
     int polyDeg = 2;
     int bsize;
@@ -105,6 +100,7 @@ public:
     bool isinv = true;
     bool isnewformula = true;
     double User_Lamnbda;
+    bool apply_sample = false;
 
     RBF_Kernal kernal;
     RBF_METHOD curMethod;
@@ -112,8 +108,12 @@ public:
 
     double rangevalue = 0.2;
     double maxvalue = 10000;
+    double user_beta = 1.0;
+    size_t max_sample_iter = 10;
 
     vector<double>pts;
+    vector<double> auxi_pts;
+    size_t auxi_npt;
     vector<double>normals;
     vector<double>tangents;
     vector<uint>edges;
@@ -163,6 +163,9 @@ public:
     arma::mat K11;
     arma::mat dI;
 
+    arma::mat As;
+    arma::mat auxi_dist_mat;
+
 
     bool isuse_sparse = false;
     double sparse_para = 1e-3;
@@ -187,6 +190,9 @@ public:
     double Hermite_weight_smoothness;
     double Hermite_ls_weight_inject, User_Lamnbda_inject;
     double Hermite_designcurve_weight;
+    bool sample_iter = false;
+    double sample_threshold = 0.001;
+    size_t incre_num = 10;
 
     double ls_coef;
     void (*Kernal_Gradient_Function_2p)(const double *p1, const double *p2, double *G);
@@ -213,7 +219,6 @@ public:
 
     double Dist_Function(const double x, const double y, const double z);
     inline double Dist_Function(const double *p);
-    inline double Dist_Function2(const double *p);
 
 public:
     static double Dist_Function(const R3Pt &in_pt);
@@ -261,6 +266,7 @@ public:
 
 
     void Set_RBFCoef(arma::vec &y);
+    void CalculateAuxiDistanceVal(const std::string& color_file);
 
     void Set_Actual_Hermite_LSCoef(double hermite_ls);
     void Set_HermiteApprox_Lamnda(double hermite_ls);
@@ -268,7 +274,7 @@ public:
     void Set_User_Lamnda_ToMatrix(double user_ls);
 
     void Set_SparsePara(double spa);
-    void Update_Newnormals();
+
 
 public:
 
@@ -284,7 +290,7 @@ public:
 
 public:
 
-    // int Opt_Hermite_PredictNormal_UnitNormal();
+    int Opt_Hermite_PredictNormal_UnitNormal();
 
 public:
 
@@ -294,6 +300,7 @@ public:
     int InjectData(vector<double> &pts, vector<int> &labels, vector<double> &normals, vector<double> &tangents, vector<uint> &edges, RBF_Paras para);
 
     int InjectData(vector<double> &pts, RBF_Paras para);
+    void InjectData(RBF_Paras para);
 
     void BuildK(RBF_Paras para);
 
@@ -303,7 +310,7 @@ public:
 
     void Surfacing(int method, int n_voxels_1d);
 
-    // void BuildCoherentGraph();
+    void BuildCoherentGraph();
 
     void BatchInitEnergyTest(vector<double> &pts, vector<int> &labels, vector<double> &normals, vector<double> &tangents, vector<uint> &edges, RBF_Paras para);
 
@@ -320,7 +327,7 @@ public:
 
 public:
 
-    // Solution_Struct sol;
+    Solution_Struct sol;
 
     vector<int>record_partition;
     vector<string>record_partition_name;
@@ -337,8 +344,8 @@ public:
     double setup_time, init_time, solve_time, callfunc_time,invM_time, setK_time, surf_time;
     vector<double>setup_timev, init_timev, solve_timev, callfunc_timev,invM_timev,setK_timev;
 
-    // void Record();
-    // void Record(RBF_METHOD method, RBF_Kernal kernal, Solution_Struct &rsol, double time);
+    void Record();
+    void Record(RBF_METHOD method, RBF_Kernal kernal, Solution_Struct &rsol, double time);
     void AddPartition(string pname);
     void Print_Record();
     void Print_TimerRecord(string fname);
@@ -346,7 +353,6 @@ public:
     void Print_Record_Init();
 
     void Print_TimerRecord_Single(string fname);
-
 
 };
 

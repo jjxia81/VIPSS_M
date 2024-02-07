@@ -1,22 +1,40 @@
 debug: false
-points_dir: ..\data\torus_sample\1600.ply
-out_dir:  ..\data\torus_sample\1600\1600
-smooth_lambda: 0.1
-normal_beta: 1.0
-volumn_dim: 100 
+# points_dir: ..\data\C_Data\Hip\Result_afterSmooth_sample_pts.ply
+# out_dir:  ..\data\C_Data\Hip\vp_res
+# points_dir: ..\data\torus\torus_energy\2000_noise_normal.ply
+# points_dir: ..\data\twist_star\twist_star_sample_ptns5.ply
+# points_dir: ..\data\rect_torus\2d_sample_pts.ply
+# points_dir: E:\projects\All_Elbows\Contours\6008\slice_points\slice_ptns_6
+# points_dir: E:\projects\All_Elbows\Contours\6140\contour_points\contour_ptnormal_6\contour_ptnormal_6.ply
+# points_dir: E:\projects\VIPSS_M\data\twist_star\twist_star_in_ptn.ply
+points_dir: E:\projects\VIPSS_M\data\cases\walrus\walrus_in_ptn0.ply
+# points_dir: ..\data\n_test\blender
+# out_dir:  E:\projects\All_Elbows\grad_output\out_mesh\6007
+# out_dir:  E:\projects\All_Elbows\grad_output\normal_iter\
+out_dir: E:\projects\VIPSS_M\data\cases\walrus\iter\normal_iter
+# smooth_lambda: 0.000001 
+smooth_lambda: 0.0001
+normal_beta:  0.0001 
+vipss_beta: 1.0
+vipss_sample: true
+volumn_dim: 50 
+max_solve_iterate_num: 10
+normal_weight_incre: 1.0
+save_iter: 1
+normal_iter_threshold: 0.000001
+optimize_normal: false 
 enable_constriants: true # sum(a_i) = 0, sum(a_i * x) + sum(b_i) = 0 
-save_inputs: true
+save_inputs: true 
 save_estimate_normal: true # save rbf normal lines 
-save_visualization: true   # save normal lines
+save_visualization: false   # save normal lines 
 save_eigen_vec: false
-use_scan_data: false
+use_scan_data: false 
 use_gradient: false # only should be used when input is scan image data 
 surface_weight: 1.0  # not used 
 graidents_dir: /home/jjxia/Documents/projects/VIPSS/data/torus/multisample_n50/noise_gradients.ply
 use_confidence: false
-data_id: 6007
-data_dir: ../All_Elbow/contours_3/
-pt_normal_folder: ../contour_points/contour_ptnormal_6/
-pt_gradient_folder: ../contour_points/gradients_tangent_6/
-pt_normal_file: contour_ptnormal_6.ply
-pt_gradient_file: gradients_tangent_6.ply
+data_id: 6008
+data_dir: E:\projects\All_Elbows\Contours\
+# contour_folder: ../contour_points/contour_ptnormal_6/
+pt_normal_file: \contour_points\contour_ptnormal_6\contour_ptnormal_6.ply
+pt_gradient_file: \contour_points\gradients_tangent_6\gradients_tangent_6.ply

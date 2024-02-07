@@ -7,38 +7,33 @@
 // #include <jsoncpp/json/json.h>
 #include <yaml-cpp/yaml.h>
 #include <filesystem>
+#include "vipss_src/normal_opt.h"
+#include "sample.h"
 
 namespace fs = std::filesystem;
 
 void test()
 {
-    arma::mat X ;
-    arma::vec beta ;
+    std::string pt_file = "../data/cases/wireframes/doghead/doghead_in_ptn.ply";
+    std::vector<double> pts;
+    std::vector<double> normals;
+    readPLYFile(pt_file, pts, normals);
 
-    beta.resize ( 3 ) ;
+    std::vector<double> out_pts;
+    std::vector<double> auxi_pts;
+    PTSample::FurthestSamplePointCloud(pts, 48, out_pts, auxi_pts);
 
-    beta (0) = 1.0 ;
-    beta (1) = 3.0 ;
-    beta (2) = 2.0 ;
-
-    X.resize ( 3, 2 ) ;
-
-    X (0,0) = 1.0 ;
-    X (0,1) = 2.0 ;
-    X (1,0) = 3.0 ;
-    X (1,1) = 4.0 ;
-    X (2,0) = 5.0 ;
-    X (2,1) = 6.0 ;
-
-    std::cout << X << std::endl ;
-    // std::cout << X.each_row() + beta << std::endl ;
+    std::string out_path = "sample.ply";
+    writePLYFile(out_path, out_pts);
 }
+
 
 int main(int argc, char* argv[])
 {
+    // test();
+    // return 0;
     // std::ifstream ifs;
     // ifs.open(argv[1]);
-
     RBF_Energy_PARA rbf_e_para;
     std::string config_path;
     if(argc <= 1)
@@ -55,29 +50,17 @@ int main(int argc, char* argv[])
         return 0;
     }
     rbf_e_para.loadYamlFile(config_path);
-    
-    cout <<  " loadYamlFile succeed! " << endl;
-    // YAML::Node config = YAML::LoadFile(argv[1]);
-    // const std::string username = config["username"].as<std::string>();
-    // const std::string password = config["password"].as<std::string>();
-    // cout << username <<" " << password << endl;
-    // arma::mat M = arma::ones(10, 10);
-    // std::cout << " M" << M(0, 0, arma::size(2, 2)) << std::endl;
-    // std::string data_id = "6007";
-    // std::string data_dir = "/home/jjxia/Documents/projects/All_Elbow/contours_3/";
-    // std::string pt_normal = "/contour_points/contour_ptnormal_6/";
-    // std::string gradient_dir = "/contour_points/gradients_tangent_6/";
-    // std::string ply_path = data_dir + data_id + pt_normal+ "contour_ptnormal_6.ply";
-    // std::string grad_path =  data_dir + data_id + gradient_dir+"gradients_tangent_6.ply";
-    // // std::string ply_path = "../test0.ply";
-    // std::string out_dir = data_dir + data_id + "/" + data_id + "_mesh";
-    // std::string out_dir = "../data/mesh";
-    // std::string ply_path = "../data/test/contour_ptnormal_6.ply";
-    // std::string grad_path = "../data/test/gradients_tangent_6.ply";
-    RBF_Energy rfb_energy;
-    rfb_energy.SetEnergyParameters(rbf_e_para);
-    rfb_energy.RunTest();
-
+    cout << " loadYamlFile succeed! " << endl;
+    if (rbf_e_para.optimize_normal)
+    {
+        NormalOptimizer n_opt;
+        n_opt.e_para_ = rbf_e_para;
+        n_opt.OptimizeNormalSigns();
+    } else {
+        RBF_Energy rfb_energy;
+        rfb_energy.SetEnergyParameters(rbf_e_para);
+        rfb_energy.SolveVipss();
+        // rfb_energy.RunTest();
+    }
     return 0;
-    
 }

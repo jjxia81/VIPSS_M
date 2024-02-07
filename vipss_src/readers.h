@@ -11,11 +11,18 @@ bool readOffFile(string filename,vector<double>&vertices,vector<unsigned int>&fa
 
 bool writeOffFile(string filename,const vector<double>&vertices,const vector<unsigned int>&faces2vertices);
 
+
+bool writePLYFile(string filename, const vector<double>&vertices);
 bool writePLYFile(string filename, const vector<double>&vertices, const vector<unsigned int>&faces2vertices,
                   const vector<double> &vertices_normal, const vector<unsigned char>&vertices_color);
 
 bool writePLYFile_VF(string filename,const vector<double>&vertices,const vector<unsigned int>&faces2vertices);
 bool writePLYFile_VN(string filename,const vector<double>&vertices, const vector<double>&vertices_normal);
+bool writePLYFile_CO(string filename,const vector<double>&vertices,
+                        const vector<uint8_t>&vertices_color);
+bool writePLYFile_VN_CO(string filename,const vector<double>&vertices, 
+                        const vector<double>&vertices_normal,
+                        const vector<uint8_t>&vertices_color);
 
 bool readPLYFile(string filename,  vector<double>&vertices, vector<double> &vertices_normal);
 
