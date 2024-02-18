@@ -41,6 +41,7 @@ class RBF_Energy
         void LoadPtsAndNormals(const std::string& ply_path);
         void RunTest(const std::string& ply_path, const std::string gradient_path=" ", bool is_gradient=false);
         void RunTest();
+        void RunTestWithOptNormal();
         void LoadPtsGradients(const std::string& gradient_path);
         void ProcessGradientsAndConfidenceMat(); 
         void SetOutdir(const std::string& dir);
@@ -113,7 +114,7 @@ class RBF_Energy
         double iter_threshold_ = 0.0001;
         double normal_delt_avg_ = 0;
 
-    private:
+    public:
         std::shared_ptr<RBF_Core> rbf_core_;
         RBF_Paras rbf_para_;
         RBF_Energy_PARA e_para_;

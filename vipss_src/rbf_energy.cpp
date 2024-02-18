@@ -85,7 +85,7 @@ void RBF_Energy::SetRBFPara(){
     para.Method = RBF_METHOD::Hermite_UnitNormal;
 
     para.InitMethod = initmethod;
-    para.user_lamnbda = 0;
+    para.user_lamnbda = e_para_.e_beta;
     para.isusesparse = false;
     // return para;
 }
@@ -95,15 +95,12 @@ void RBF_Energy::InitRBFCore()
     // std::vector<double>Vs;
     rbf_core_ = std::make_shared<RBF_Core>();
     this->SetRBFPara();
-    rbf_para_.user_lamnbda = 1.0;
+
+    rbf_para_.user_lamnbda = e_para_.e_lambda;
+    // std::cout << " rbf_para_ lambda ------------: " << rbf_para_.user_lamnbda << endl;
     // readXYZ(infilename,Vs);
     rbf_core_->InjectData(pts_, rbf_para_);
-
-    // rbf_core_->normals = normals_;
-    // rbf_core_->newnormals = normals_;
-    // rbf_core_->BuildK(rbf_para_);
     rbf_core_->Set_HermiteRBF(pts_);
-
     std::cout <<"Finish init rbf core !" << std::endl;
 }
 
@@ -165,6 +162,7 @@ void RBF_Energy::LoadPtsAndNormals(const std::string& ply_path)
         gradients_ = normals_;
     }
 }
+
 void RBF_Energy::NormalizePts()
 {
     double DMIN = std::numeric_limits<double>::min();
@@ -198,8 +196,8 @@ void RBF_Energy::NormalizePts()
         pts_[3 * i + 2] = (pts_[3 * i + 2] - origin_z) / scale;
     }
 
-    std::string normalized_pts_path = e_para_.out_dir + "_normalized_pts.ply";
-    writePLYFile_VN(normalized_pts_path, pts_, gradients_);
+    // std::string normalized_pts_path = e_para_.out_dir + "_normalized_pts.ply";
+    // writePLYFile_VN(normalized_pts_path, pts_, gradients_);
 }
 
 void RBF_Energy::ProcessGradientsAndConfidenceMat()
@@ -429,13 +427,13 @@ void RBF_Energy::BuildHessianMat()
     D_M_(0, 0, arma::size(pt_n_*4, pt_n_*4)) = rbf_core_->M;
     arma::mat fs_t =  F_s_.t();
     arma::mat fg_t =  F_g_.t();
-    SaveMatrix(fs_t, "fs_t.txt");
+    // SaveMatrix(fs_t, "fs_t.txt");
     // if(e_para_.use_confidence)
     {
         // fs_t = fs_t.each_row() % alpha_s_;
         fg_t = fg_t.each_row() % alpha_g_;
     } 
-    SaveMatrix(fs_t, "fs_t_s.txt");
+    // SaveMatrix(fs_t, "fs_t_s.txt");
     double beta =  e_para_.e_beta ;
     //double beta = e_para_.e_beta / double(pt_n_);
     /*arma::mat h_s = fs_t * F_s_;
@@ -516,7 +514,7 @@ void RBF_Energy::BuildEnergyMatrix()
 
     BuildHessianMat();
     auto t9 = Clock::now();
-    cout << "BuildHessianMat time: " <<  (re_time = std::chrono::nanoseconds(t9 - t8).count()/1e9) <<endl;
+    cout << "BuildHessianMat time: " <<  (re_time = std::chrono::nanoseconds(t9 - t6).count()/1e9) <<endl;
    /* ReduceBAndHMatWithSVD();
     auto t10 = Clock::now();
     cout << "ReduceBAndHMatWithSVD time: " <<  (re_time = std::chrono::nanoseconds(t10 - t9).count()/1e9) <<endl;
@@ -582,7 +580,7 @@ void RBF_Energy::SolveReducedLinearSystem()
     //    }
     //}
 
-    X_reduced_ = arma::solve(H_, B_reduced_.t(), arma::solve_opts::likely_sympd);
+    X_reduced_ = arma::solve(H_, B_reduced_.t(), arma::solve_opts::fast);
     X_ = SVD_V_ * X_reduced_;
     //SaveMatrix(X_, "X_.txt");
     rbf_core_->a = X_(0, 0, arma::size(pt_n_ * 4, 1));
@@ -621,7 +619,9 @@ void RBF_Energy::RunTest()
         std::cout <<"Load gradients succeed !" << std::endl;
         ProcessGradientsAndConfidenceMat();
     }
-    NormalizePts();    
+    
+    NormalizePts();
+     
     SaveFuncInputs();
     auto t3 = Clock::now();
     cout << "set pts time: " <<  (re_time = std::chrono::nanoseconds(t3 - t2).count()/1e9) <<endl;
@@ -638,6 +638,35 @@ void RBF_Energy::RunTest()
         SolveRBF();
     }
 }
+
+
+void RBF_Energy::RunTestWithOptNormal()
+{
+    double re_time;
+    cout<<"start solve rbf matrix "<<endl;
+    std::cout << "e_para_.use_gradient " << e_para_.use_gradient << std::endl;
+    auto t1 = Clock::now();
+    auto t2 = Clock::now();
+
+    NormalizePts();
+    SaveFuncInputs();
+    auto t3 = Clock::now();
+    cout << "set pts time: " <<  (re_time = std::chrono::nanoseconds(t3 - t2).count()/1e9) <<endl;
+    
+    SetRBFPara();
+    InitRBFCore();
+    auto t4 = Clock::now();
+    cout << "InitRBFCore time: " <<  (re_time = std::chrono::nanoseconds(t4 - t3).count()/1e9) <<endl;
+    if (e_para_.max_solve_iterate_num > 1)
+    {
+        SolveRBFIterate();
+    }
+    else {
+        SolveRBF();
+    }
+}
+
+
 
 void RBF_Energy::SolveRBF()
 {
@@ -754,6 +783,7 @@ void RBF_Energy::EstimateRBFNormals()
     std::vector<double> estimated_normals;
     std::vector<double> estimated_normals_normalized;
     double delta = 0.000001;
+    cout << "  save pt normals num: " << pt_n_<< endl;
     for(size_t i = 0; i < pt_n_; ++i)
     {
         const R3Pt pt(pts_[i*3], pts_[i*3 + 1], pts_[i*3 + 2]);
@@ -781,7 +811,9 @@ void RBF_Energy::EstimateRBFNormals()
         estimated_normals_normalized.push_back(dz/n_len);
         
     }
+    this->gradients_ = estimated_normals_normalized;
     // rbf_core_->newnormals = estimated_normals;
+    // cout << "  save pt normals " << endl;
     if(e_para_.save_estimate_normal)
     {
         if(e_para_.save_visualization)
@@ -789,9 +821,11 @@ void RBF_Energy::EstimateRBFNormals()
             std::string out_path = e_para_.out_dir + "_rbf_normal_line";
             SavePointsAndNormals(pts_, estimated_normals, out_path);
         }
+        
         std::string out_path = e_para_.out_dir + "_out_ptn";
         writePLYFile_VN(out_path, pts_, estimated_normals);
         std::string out_path2 = e_para_.out_dir + "_out_ptn_normalized";
+        cout << "  save pt normals : " << out_path2  << endl;
         writePLYFile_VN(out_path2, pts_, estimated_normals_normalized);
     }
 }
@@ -900,54 +934,79 @@ double RBF_Energy::CalculateAllEnergy() const
 
 void RBF_Energy::SolveVipss()
 {
-	vector<double>Vs;
-    
     RBF_Core rbf_core;
     this->SetRBFPara();
-
-    rbf_para_.user_lamnbda = e_para_.e_lambda;
-
-    // readXYZ(infilename,Vs);
-    std::string filename = "E:/projects/VIPSS/data/wireframes/doghead/input.xyz";
-    readXYZ(filename, Vs);
+    vector<double>Vs;
+    std::vector<double> vn;
+    readPLYFile(e_para_.mesh_points_path, Vs, vn);
 
     vector<double> key_vs;
     vector<double> auxi_vs;
-    size_t sample_num = size_t(Vs.size() * 0.01);
+
+    size_t sample_num = 50;
+    if(e_para_.vipss_incre_init_pt_num < 1.0)
+    {
+        sample_num = size_t(Vs.size() / 3 * e_para_.vipss_incre_init_pt_num);
+    } else {
+        sample_num = size_t(e_para_.vipss_incre_init_pt_num); 
+    }
+    
     PTSample::FurthestSamplePointCloud(Vs, sample_num, key_vs, auxi_vs);
 
-    rbf_core.apply_sample = true;
+    rbf_core.apply_sample = e_para_.vipss_apply_sample;
     rbf_core.user_beta = e_para_.vipss_beta;
-
+    
+    rbf_para_.user_lamnbda = e_para_.v_lambda;
     rbf_core.sample_iter = true;
-    rbf_core.sample_threshold = 0.04;
-    rbf_core.incre_num = size_t(auxi_vs.size() / 3  * 0.02);
-    rbf_core.max_sample_iter = 10;
+    rbf_core.sample_threshold = e_para_.vipss_incre_shreshold;
+    // rbf_core.incre_num = size_t(auxi_vs.size() / 3  * 0.02);
+
+    rbf_core.incre_num = e_para_.vipss_incre_pt_num;
+    rbf_core.max_sample_iter = e_para_.vipss_incre_max_iter;
     // size_t i =0;
+    bool enable_debug = e_para_.vipss_incre_debug;
+    double re_time = 0;
+
+    auto t_begin = Clock::now();
     for(size_t i =0; i < rbf_core.max_sample_iter; ++i)
     {
-        std::cout << " current lopp id " << i << endl;
+        auto t0 = Clock::now();
+        // std::cout << " current lopp id " << i << endl;
         rbf_core.pts = key_vs;
         rbf_core.auxi_npt = auxi_vs.size() / 3;
         rbf_core.auxi_pts = auxi_vs;
+
         rbf_core.InjectData(rbf_para_);
+
         rbf_core.BuildK(rbf_para_);
         rbf_core.InitNormal(rbf_para_);
+        rbf_core.opt_incre = true;
+        cout << "optimize normal ...... " << std::endl;
         rbf_core.OptNormal(0);
+        rbf_core.opt_incre = false;
 
-        rbf_core.Write_Hermite_NormalPrediction(std::to_string(i) + "_normal", 1);
-        rbf_core.CalculateAuxiDistanceVal(std::to_string(i) + "_auxi_color");
+        std::string out_normal_dir = e_para_.out_dir + std::to_string(i) + "_normal";
+        rbf_core.Write_Hermite_NormalPrediction(out_normal_dir, 1);
 
         size_t n_voxel_line = e_para_.volumn_dim;
-        if(e_para_.is_surfacing){
-            rbf_core.Surfacing(0,n_voxel_line);
-            rbf_core.Write_Surface(std::to_string(i) +"_surface");
+        if(e_para_.is_surfacing && enable_debug){
+            rbf_core.Surfacing(0, n_voxel_line);
+            std::string out_surface_dir = e_para_.out_dir + std::to_string(i) +"_surface";
+            rbf_core.Write_Surface(out_surface_dir);
         }
         bool is_outputtime = true;
-        if(is_outputtime){
-            rbf_core.Print_TimerRecord_Single(std::to_string(i) +"_time.txt");
+        if(is_outputtime && enable_debug){
+            std::string out_time_dir = e_para_.out_dir + std::to_string(i) +"_time.txt";
+            rbf_core.Print_TimerRecord_Single(out_time_dir);
         }
+        if(! rbf_core.apply_sample) return;
+        std::string out_pt_color_dir = e_para_.out_dir + std::to_string(i) + "_auxi_color";
+        rbf_core.CalculateAuxiDistanceVal(out_pt_color_dir, enable_debug);
 
+        if( rbf_core.auxi_dist_mat.n_cols == 0)
+        {
+            continue;
+        }
         cout << "  rbf_core.auxi_dist_mat  " <<  rbf_core.auxi_dist_mat.n_cols << endl;
         arma::vec dist_vec = rbf_core.auxi_dist_mat.col(0);
         cout << " dist_vec size "<< dist_vec.size() << endl;
@@ -991,20 +1050,23 @@ void RBF_Energy::SolveVipss()
         {
             break;
         }
+        auto t1 = Clock::now();
+        cout << "vipss incre iter " << i << " time: " << (re_time = std::chrono::nanoseconds(t1 - t0).count() / 1e9) << endl;
     }
-    
-    // return;
-
-
-
-    // readXYZ(filename,Vs);
-    // rbf_core.InjectData(Vs,rbf_para_);
-    // rbf_core.BuildK(rbf_para_);
-    // rbf_core.InitNormal(rbf_para_);
-    // rbf_core.OptNormal(0);
-
-    // rbf_core.Write_Hermite_NormalPrediction("_normal", 1);
-
+    auto t_end = Clock::now();
+    cout << "vipss incre iter all time: " << (re_time = std::chrono::nanoseconds(t_end - t_begin).count() / 1e9) << endl;
+    rbf_core_ = std::make_shared<RBF_Core>(); 
+    *rbf_core_ = rbf_core;
+    pts_ = Vs;
+    pt_n_ = pts_.size()/3;
+    std::cout << " EstimateRBFNormals " << std::endl;
+    EstimateRBFNormals();
+    if(e_para_.save_estimate_normal)
+    {
+        std::string out_normal_dir = e_para_.out_dir + "_opt_input_normal";
+        writePLYFile_VN(out_normal_dir, pts_, gradients_);
+    }
+    RunTestWithOptNormal();
     // if(e_para_.is_surfacing){
     //     rbf_core.Surfacing(0,n_voxel_line);
     //     rbf_core.Write_Surface("_surface");

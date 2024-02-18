@@ -148,9 +148,11 @@ public:
     arma::mat Minv;
     arma::mat P;
     arma::mat K;
+    arma::mat K_incre_;
     arma::mat bprey;
     arma::mat saveK;
     arma::mat saveK_finalH;
+    arma::mat saveK_finalH_incre;
     arma::mat finalH;
 
     arma::mat RQ;
@@ -162,12 +164,13 @@ public:
     arma::mat K01;
     arma::mat K11;
     arma::mat dI;
-
-    arma::mat As;
+    arma::mat Ws;
+    arma::mat As_;
     arma::mat auxi_dist_mat;
 
 
     bool isuse_sparse = false;
+    bool opt_incre = false;
     double sparse_para = 1e-3;
 
 public:
@@ -266,7 +269,7 @@ public:
 
 
     void Set_RBFCoef(arma::vec &y);
-    void CalculateAuxiDistanceVal(const std::string& color_file);
+    void CalculateAuxiDistanceVal(const std::string& color_file, bool save_color=false);
 
     void Set_Actual_Hermite_LSCoef(double hermite_ls);
     void Set_HermiteApprox_Lamnda(double hermite_ls);

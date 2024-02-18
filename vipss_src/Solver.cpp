@@ -60,6 +60,7 @@ int optwrapper(vector<double>&para,
                ){
 
     nlopt::result result;
+    // std::cout << "start nlopt optimization 0 ...... " << std::endl;
     try{
         int numOfPara = para.size();
         //nlopt::opt myopt(nlopt::LD_CCSAQ,uint(numOfPara));
@@ -114,6 +115,8 @@ int Solver::nloptwrapper(vector<double>&lowerbound,
 
     vector<double>tmp_grad(0);
     sol.init_energy = optfunc(sol.solveval,tmp_grad,funcPara);
+
+    std::cout << "start nlopt optimizationn 1 ...... " << std::endl;
     try{
         int numOfPara = lowerbound.size();
         //nlopt::opt myopt(nlopt::LD_CCSAQ,uint(numOfPara));
@@ -189,6 +192,7 @@ int Solver::nloptwrapper(vector<double>&lowerbound,
     vector<double>tmp_grad(0);
 
     sol.init_energy = optfunc(sol.solveval,tmp_grad,funcPara);
+    std::cout << "start nlopt optimization ...... " << std::endl;
     try{
         int numOfPara = lowerbound.size();
         //nlopt::opt myopt(nlopt::LD_VAR1,uint(numOfPara));
@@ -210,18 +214,11 @@ int Solver::nloptwrapper(vector<double>&lowerbound,
         //myopt.set_precond_min_objective(optfuncModify, pre, &funcPara);
         //myopt.set_min_objective(optfunc, &funcPara);
 
-
+        cout << "start my opt optimize ..." << endl;
         auto t1 = Clock::now();
-
         result = myopt.optimize(sol.solveval, sol.energy);
-
         auto t2 = Clock::now();
-
         cout << "nlopt time: " << (sol.time = std::chrono::nanoseconds(t2 - t1).count()/1e9) <<endl;
-
-
-
-
         sol.Statue = (result >= nlopt::SUCCESS);
         cout<<"Statu: "<<result<<endl;
         std::cout << "Obj: "<< std::setprecision(10) << sol.init_energy << " -> " <<sol.energy << std::endl;

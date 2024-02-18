@@ -11,6 +11,7 @@ void RBF_Energy_PARA::loadYamlFile(const std::string& yaml_path)
     //double surface_w = config["surface_weight"].as<double>();
     double surface_w = 1.0;
     e_lambda = config["smooth_lambda"].as<double>();
+    v_lambda = config["vipss_lambda"].as<double>();
     e_beta = config["normal_beta"].as<double>();
     e_lambda = e_lambda / surface_w;
     e_beta = e_beta / surface_w;
@@ -30,6 +31,14 @@ void RBF_Energy_PARA::loadYamlFile(const std::string& yaml_path)
     normal_iter_threshold = config["normal_iter_threshold"].as<double>();
     save_iter = config["save_iter"].as<int>();
     vipss_beta = config["vipss_beta"].as<double>();
+    vipss_apply_sample = config["vipss_apply_sample"].as<bool>();
+    vipss_incre_max_iter = config["vipss_incre_max_iter"].as<int>();
+    vipss_incre_pt_num = config["vipss_incre_pt_num"].as<int>();
+    vipss_incre_debug = config["vipss_incre_debug"].as<bool>();
+    vipss_incre_init_pt_num = config["vipss_incre_init_pt_num"].as<double>();
+    vipss_incre_shreshold = config["vipss_incre_shreshold"].as<double>();
+    normalize_input_pts = config["normalize_input_pts"].as<bool>();
+
     if (!use_scan_data)
     {
         mesh_points_path = config["points_dir"].as<std::string>();

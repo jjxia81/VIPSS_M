@@ -92,7 +92,7 @@ void RBF_Core::Set_HermiteRBF(vector<double>&pts){
     isHermite = true;
     if(apply_sample)
     {
-        As.set_size(auxi_npt,npt*4 + 4);
+        As_.set_size(auxi_npt,npt*4 + 4);
         
         double *p_pts = pts.data();
         double *auxi_p_pts = auxi_pts.data();
@@ -101,12 +101,12 @@ void RBF_Core::Set_HermiteRBF(vector<double>&pts){
         std::cout << " auxi points number " << auxi_npt << std::endl;
         for(int i=0;i<auxi_npt;++i){
             for(int j=0;j<npt;++j){
-                As(i,j) = Kernal_Function_2p(auxi_p_pts+i*3, p_pts+j*3);
+                As_(i,j) = Kernal_Function_2p(auxi_p_pts+i*3, p_pts+j*3);
                 Kernal_Gradient_Function_2p(auxi_p_pts+i*3, p_pts+j*3, Gs);
-                for(int k=0;k<3;++k)As(i,npt+j+k*npt) = Gs[k];
+                for(int k=0;k<3;++k)As_(i,npt+j+k*npt) = Gs[k];
             }
-            As(i,4*npt) = 1;
-            for(int j=0;j<3;++j)As(i, 4*npt + j+1) = auxi_p_pts[i*3+j];
+            As_(i,4*npt) = 1;
+            for(int j=0;j<3;++j)As_(i, 4*npt + j+1) = auxi_p_pts[i*3+j];
         }
     }
 
@@ -223,62 +223,28 @@ void RBF_Core::Set_SparsePara(double spa){
 }
 
 void RBF_Core::Set_User_Lamnda_ToMatrix(double user_ls){
-
-
     {
         Set_Actual_User_LSCoef(user_ls);
         auto t1 = Clock::now();
-        cout<<"setting K, HermiteApprox_Lamnda matrix"<<endl;
+        cout<<"setting K, Hermite Lamnda matrix "<<endl;
+        cout<<"User_Lamnbda " << User_Lamnbda <<endl;
         if(User_Lamnbda>0){
             arma::sp_mat eye;
             eye.eye(npt,npt);
-
-            dI = inv(eye + User_Lamnbda*K00);
-            saveK_finalH = K = K11 - (User_Lamnbda)*(K01.t()*dI*K01);
             if(apply_sample)
             {
-                // double beta = 10.0;
-                arma::mat F_sg = dI*K01; 
-                // cout<<"setting Fsg matrix"<<endl;
-                arma::mat F_s = - (User_Lamnbda)*F_sg;   // npt * 3 npt
-                // cout << "K size " << K.n_rows << " " << K.n_cols << std::endl;
-                arma::mat K0 = Minv.submat(0, 0, 4*npt-1, npt-1); // 4 npt * npt
-                // cout<<"setting K0 matrix"<<endl;
-                arma::mat K1 = Minv.submat(0, npt, 4*npt-1, npt*4-1); //  4 npt * 3 npt
-                // cout<<"setting K1 matrix"<<endl;
-                arma::mat H_ab = K0 * F_s + K1;  // 4 npt * 3 npt
-
-                cout<<"setting H_ab matrix"<<endl;
-
-                arma::mat Ninv_t = Ninv.t(); // 4 * 4 npt
-                // cout<<"setting H_ab matrix"<<endl;
-
-                // cout << "Ninv_t size " << Ninv_t.n_rows << " " << Ninv_t.n_cols << std::endl;
-                arma::mat Ninv_ts = Ninv_t.submat(0, 0, 3, npt-1);  // 4 * npt
-                //  cout<<"setting Ninv_ts matrix"<<endl;
-
-                arma::mat Ninv_tg = Ninv_t.submat(0,npt,3, 4* npt - 1); // 4 * 3 npt 
-                //  cout<<"setting Ninv_tg matrix"<<endl;
-                arma::mat H_cd =  Ninv_ts * F_s + Ninv_tg; // 4 * 3 npt
-
-                cout<<"setting H_cd matrix"<<endl;
-
-                arma::mat A_sab = As.submat(0, 0, auxi_npt -1, 4 * npt -1); // axui_npt * 4 npt
-                arma::mat A_scd = As.submat(0, 4 * npt, auxi_npt -1, 4 * npt + 3); // axui_npt * 4
-
-                cout<<"setting A_scd matrix"<<endl;
-
-                arma::mat H_sg = A_sab * H_ab + A_scd * H_cd; // auxi_npt * 3 npt
-                arma::mat H_s = user_beta * H_sg.t() * H_sg;
-                saveK_finalH += H_s;            
+                dI = inv(eye + K00);
+                saveK_finalH = K = K11 - (K01.t()*dI*K01);
+            } else
+            {
+                dI = inv(eye + User_Lamnbda*K00);
+                saveK_finalH = K = K11 - (User_Lamnbda)*(K01.t()*dI*K01);
             }
-
+            
         }else saveK_finalH = K = K11;
         cout<<"solved: "<<(std::chrono::nanoseconds(Clock::now() - t1).count()/1e9)<<endl;
     }
-
     finalH = saveK_finalH;
-
 }
 
 void RBF_Core::Set_HermiteApprox_Lamnda(double hermite_ls){
@@ -293,29 +259,40 @@ void RBF_Core::Set_HermiteApprox_Lamnda(double hermite_ls){
             eye.eye(npt,npt);
 
             if(ls_coef > 0){
-                arma:: mat tmpdI = inv(eye + (ls_coef+User_Lamnbda)*K00);
-                K = K11 - (ls_coef+User_Lamnbda)*(K01.t()*tmpdI*K01);
+                if(apply_sample)
+                {
+                    std::cout << "ws size " << Ws.n_rows << " " << Ws.n_cols << std::endl;
+                    if(Ws.n_rows > 0)
+                    {
+                        K = (ls_coef+User_Lamnbda) * Minv + Ws;
+                    } else {
+                        K = (ls_coef+User_Lamnbda) * Minv;
+                    }
+
+                    K00 = K.submat(0,0,npt-1,npt-1);
+                    K01 = K.submat(0,npt,npt-1,npt*4-1);
+                    K11 = K.submat( npt, npt, npt*4-1, npt*4-1 );
+                    arma:: mat tmpdI = inv(eye + K00);
+                    K = K11 - (K01.t()*tmpdI*K01);
+                } else
+                {
+                    arma:: mat tmpdI = inv(eye + (ls_coef+User_Lamnbda)*K00);
+                    K = K11 - (ls_coef+User_Lamnbda)*(K01.t()*tmpdI*K01);
+                }
+                
             }else{
                 K = saveK_finalH;
             }
         }
-        cout<<"solved: "<<(std::chrono::nanoseconds(Clock::now() - t1).count()/1e9)<<endl;    
+        cout<<"Approx solved: "<<(std::chrono::nanoseconds(Clock::now() - t1).count()/1e9)<<endl;    
     }
-
-
 }
-
-
 
 void RBF_Core::Set_Hermite_PredictNormal(vector<double>&pts){
 
-
-
     Set_HermiteRBF(pts);
-
     auto t1 = Clock::now();
     cout<<"setting K"<<endl;
-
 
     if(!isnewformula){
         arma::mat D = N.t()*Minv;
@@ -339,9 +316,35 @@ void RBF_Core::Set_Hermite_PredictNormal(vector<double>&pts){
         Minv = bigMinv.submat(0,0,npt*4-1,npt*4-1);
         Ninv = bigMinv.submat(0,npt*4,(npt)*4-1, (npt+1)*4-1);
 
+        std::cout << "------------- User lamnbda "<< User_Lamnbda << std::endl;
+        if(apply_sample)
+        {
+            
+            if(Ws.n_rows > 0)
+            {
+                arma::mat Jk = bigMinv.submat(0,0,npt*4 + 3,npt*4-1);
+                Ws = As_ * Jk;
+                Ws = Ws.t() * Ws; 
+                K = User_Lamnbda * Minv + Ws;
+            } else 
+            {
+                K = User_Lamnbda * Minv;
+            }
+
+            
+
+            // std::cout << " beta " << user_beta << std::endl;
+            
+            // K = User_Lamnbda * Minv ;
+            // K = Minv;
+            std::cout << "*************apply_sample K size " << K.n_rows << " " << K.n_cols << std::endl;
+        } else {
+            K = Minv;
+        }
+
         bigMinv.clear();
         //K = Minv - Ninv *(N.t()*Minv);
-        K = Minv;
+        // K = Minv;
         K00 = K.submat(0,0,npt-1,npt-1);
         K01 = K.submat(0,npt,npt-1,npt*4-1);
         K11 = K.submat( npt, npt, npt*4-1, npt*4-1 );
@@ -359,12 +362,8 @@ void RBF_Core::Set_Hermite_PredictNormal(vector<double>&pts){
 //		arma::mat eigvec;
 //		ny = eig_sym( eigval, eigvec, K);
 //		cout<<ny<<endl;
-
         cout<<"K: "<<K.n_cols<<endl;
     }
-
-
-
 
     //K = ( K.t() + K )/2;
     cout<<"solve K total: "<<(setK_time= std::chrono::nanoseconds(Clock::now() - t1).count()/1e9)<<endl;
@@ -433,6 +432,8 @@ double optfunc_Hermite(const vector<double>&x, vector<double>&grad, void *fdata)
     int n = drbf->npt;
     arma::vec arma_x(n*3);
 
+    // std::cout << " .............optfunc_Hermite  000 " << std::endl;
+
     //(  sin(a)cos(b), sin(a)sin(b), cos(a)  )  a =>[0, pi], b => [-pi, pi];
     vector<double>sina_cosa_sinb_cosb(n * 4);
     for(int i=0;i<n;++i){
@@ -443,6 +444,7 @@ double optfunc_Hermite(const vector<double>&x, vector<double>&grad, void *fdata)
         sina_cosa_sinb_cosb[ind+3] = cos(x[i*2+1]);
     }
 
+    // std::cout << " .............optfunc_Hermite  001 " << std::endl;
     for(int i=0;i<n;++i){
         auto p_scsc = sina_cosa_sinb_cosb.data()+i*4;
         //        int ind = i*3;
@@ -454,12 +456,22 @@ double optfunc_Hermite(const vector<double>&x, vector<double>&grad, void *fdata)
         arma_x(i+n*2) = p_scsc[1];
     }
 
+    // std::cout << " .............optfunc_Hermite  002 " << std::endl;
     arma::vec a2;
     //if(drbf->isuse_sparse)a2 = drbf->sp_H * arma_x;
     //else
+    //std::cout << " .............opt_incre  "<< drbf->opt_incre << std::endl;
+    /*if(drbf->apply_sample && drbf->opt_incre)
+    {
+        a2 = drbf->saveK_finalH_incre * arma_x;
+        std::cout << " a2  "<< a2.n_rows << std::endl;
+    } else {
+        a2 = drbf->finalH * arma_x;
+    }*/
+
     a2 = drbf->finalH * arma_x;
-
-
+    
+    //std::cout << " .............optfunc_Hermite  003 " << std::endl;
     if (!grad.empty()) {
 
         grad.resize(n*2);
@@ -476,8 +488,9 @@ double optfunc_Hermite(const vector<double>&x, vector<double>&grad, void *fdata)
 
         }
     }
-
+    //std::cout << " .............optfunc_Hermite  004 " << std::endl;
     double re = arma::dot( arma_x, a2 );
+    // std::cout << " residual value :  " << re << std::endl;
     countopt++;
 
     acc_time+=(std::chrono::nanoseconds(Clock::now() - t1).count()/1e9);
@@ -544,12 +557,17 @@ int RBF_Core::Opt_Hermite_PredictNormal_UnitNormal(){
     return 1;
 }
 
-void RBF_Core::CalculateAuxiDistanceVal(const std::string& color_file)
+void RBF_Core::CalculateAuxiDistanceVal(const std::string& color_file, bool save_color)
 {
     arma::mat func_para =  arma::join_cols(a,b);
+    if(As_.n_rows == 0)
+    {
+        cout << "There is no auxi points. " << endl;
+        return;
+    }
     std::cout << "func_para mat " << func_para.n_rows << " " << func_para.n_cols << std::endl;
-    std::cout << "As mat " << As.n_rows << " " << As.n_cols << std::endl;
-    auxi_dist_mat = As * func_para;
+    std::cout << "As mat " << As_.n_rows << " " << As_.n_cols << std::endl;
+    auxi_dist_mat = As_ * func_para;
     // std::cout << "dist mat " << dist_mat.n_cols << " " << dist_mat.n_rows << std::endl;
     std::vector<uint8_t> colors;
     auxi_dist_mat = arma::abs(auxi_dist_mat);
@@ -586,7 +604,11 @@ void RBF_Core::CalculateAuxiDistanceVal(const std::string& color_file)
         colors.push_back(0);
     }
     // std::string out_color_file = "auxi_color";
-    writePLYFile_CO(color_file, auxi_pts, colors);
+    if(save_color)
+    {
+        writePLYFile_CO(color_file, auxi_pts, colors);
+    }
+    
 }
 
 void RBF_Core::Set_RBFCoef(arma::vec &y){
@@ -599,8 +621,14 @@ void RBF_Core::Set_RBFCoef(arma::vec &y){
         b = bprey * y;
         a = Minv * (y - N*b);
     }else{
-
-        if(User_Lamnbda>0)y.subvec(0,npt-1) = -User_Lamnbda*dI*K01*y.subvec(npt,npt*4-1);
+        if (apply_sample)
+        {
+            y.subvec(0, npt - 1) = - dI * K01 * y.subvec(npt, npt * 4 - 1);
+        }
+        else {
+            if (User_Lamnbda > 0)y.subvec(0, npt - 1) = -User_Lamnbda * dI * K01 * y.subvec(npt, npt * 4 - 1);
+        }
+        
 
         a = Minv*y;
         b = Ninv.t()*y;
@@ -614,7 +642,8 @@ void RBF_Core::Set_RBFCoef(arma::vec &y){
 
 int RBF_Core::Lamnbda_Search_GlobalEigen(){
 
-    vector<double>lamnbda_list({0, 0.001, 0.01, 0.1, 1});
+    // vector<double>lamnbda_list({0, 0.001, 0.01, 0.1, 1});
+    vector<double>lamnbda_list({0.001, 0.01, 0.1, 1});
     //vector<double>lamnbda_list({  0.5,0.6,0.7,0.8,0.9,1,1.1,1.5,2,3});
     //lamnbda_list.clear();
     //for(double i=1.5;i<2.5;i+=0.1)lamnbda_list.push_back(i);
@@ -626,13 +655,15 @@ int RBF_Core::Lamnbda_Search_GlobalEigen(){
 
     lamnbda_list_sa = lamnbda_list;
     for(int i=0;i<lamnbda_list.size();++i){
+        cout << "try lambda value " << lamnbda_list[i] << endl;
 
         Set_HermiteApprox_Lamnda(lamnbda_list[i]);
 
+        cout << "try curMethod " << curMethod << endl;
         if(curMethod==Hermite_UnitNormal){
             Solve_Hermite_PredictNormal_UnitNorm();
         }
-
+        cout << " start  OptNormal " << endl;
         //Solve_Hermite_PredictNormal_UnitNorm();
         OptNormal(1);
 
