@@ -54,9 +54,11 @@ void Surfacer::CalSurfacingPara(vector<double>&Vs, int nvoxels){
 
     }else{
         for(int j=0;j<3;++j){
-            st[j] = midpoint[j];
+            /*st[j] = midpoint[j];*/
+            st[j] = Vs[j];
         }
-        iBound = (int) (width / dSize / 2. * 1.75);
+        
+        iBound = (int) (width / dSize  * 1.5);
 
     }
 

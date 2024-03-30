@@ -132,7 +132,7 @@ int RBF_Core::InjectData(vector<double> &pts, vector<int> &labels, vector<double
     npt = this->pts.size()/3;
     curMethod = para.Method;
     curInitMethod = para.InitMethod;
-
+    compact_radius = para.compact_radius;
     polyDeg = para.polyDeg;
     User_Lamnbda = para.user_lamnbda;
     rangevalue = para.rangevalue;

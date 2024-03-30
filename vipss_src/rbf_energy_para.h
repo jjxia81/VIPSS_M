@@ -24,15 +24,24 @@ public:
     double vipss_incre_init_pt_num = 50.0; 
     int save_iter = 0;
     int vipss_incre_max_iter = 10;
+    int vipss_type = 0;
     double normal_weight_incre = 1.0;
     int volumn_dim = 50;
     double e_lambda = 0.1;
     double v_lambda = 0.1;
     double vipss_beta = 1.0;
     double e_beta = 0.1;
+    bool use_input_normal = false;
+    int kernel_type = 3;
+    bool only_vipss_hrbf = false;
+    double compact_radius = 1.0;
+
     double normal_iter_threshold = 0.000001;
     double vipss_incre_shreshold = 0.04;
+    double kernel_dist = 0.1;
     bool normalize_input_pts = false;
+    bool use_sparse = false;
+    bool use_eigen_sparse = false;
     std::string mesh_points_path;
     std::string gradients_path;
     std::string out_dir;

@@ -13,6 +13,8 @@ void RBF_Energy_PARA::loadYamlFile(const std::string& yaml_path)
     e_lambda = config["smooth_lambda"].as<double>();
     v_lambda = config["vipss_lambda"].as<double>();
     e_beta = config["normal_beta"].as<double>();
+
+    cout << "use_input_normal 0 0" << endl;
     e_lambda = e_lambda / surface_w;
     e_beta = e_beta / surface_w;
     volumn_dim = config["volumn_dim"].as<int>();
@@ -31,14 +33,30 @@ void RBF_Energy_PARA::loadYamlFile(const std::string& yaml_path)
     normal_iter_threshold = config["normal_iter_threshold"].as<double>();
     save_iter = config["save_iter"].as<int>();
     vipss_beta = config["vipss_beta"].as<double>();
+
+    cout << "use_input_normal 0 1" << endl;
+
     vipss_apply_sample = config["vipss_apply_sample"].as<bool>();
     vipss_incre_max_iter = config["vipss_incre_max_iter"].as<int>();
     vipss_incre_pt_num = config["vipss_incre_pt_num"].as<int>();
     vipss_incre_debug = config["vipss_incre_debug"].as<bool>();
     vipss_incre_init_pt_num = config["vipss_incre_init_pt_num"].as<double>();
+
+    cout << "use_input_normal 0 2" << endl;
     vipss_incre_shreshold = config["vipss_incre_shreshold"].as<double>();
     normalize_input_pts = config["normalize_input_pts"].as<bool>();
+    use_sparse = config["use_sparse"].as<bool>();
+    cout << "use_input_normal 0 3" << endl;
+    kernel_dist = config["kernel_dist"].as<double>();
+    cout << "use_input_normal 0 4" << endl;
+    vipss_type = config["vipss_type"].as<int>();
+    cout << "use_input_normal 0 5" << endl;
+    use_input_normal = config["use_input_normal"].as<bool>();
+    kernel_type = config["kernel_type"].as<int>();
+    only_vipss_hrbf = config["only_vipss_hrbf"].as<bool>();
+    compact_radius = config["compact_radius"].as<double>();
 
+    cout << "use_input_normal " << use_input_normal << endl;
     if (!use_scan_data)
     {
         mesh_points_path = config["points_dir"].as<std::string>();

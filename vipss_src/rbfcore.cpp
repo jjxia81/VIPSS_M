@@ -115,6 +115,163 @@ void XCube_HessianDot_Kernel_2p(const double *p1, const double *p2, const double
 
 }
 
+
+
+//static double Comnpact_radius = 0.2;
+//static double Comnpact_radius_scale = 1.0 / pow(Comnpact_radius, 5);
+//static double Comnpact_radius_scale = 1.0;
+
+double rbf_compact_kernel_radius = 1.0;
+double rbf_compact_kernel_scale = 1.0;
+
+double Compact_Kernel(const double x) {
+    double new_x = x ;
+    if (new_x > rbf_compact_kernel_radius) return 0;
+
+    return pow(rbf_compact_kernel_radius - new_x,4) * (4 * new_x + rbf_compact_kernel_radius) * rbf_compact_kernel_scale;
+}
+
+double Compact_Kernel_2p(const double* p1, const double* p2) {
+    return Compact_Kernel(MyUtility::_VerticesDistance(p1, p2));
+}
+
+void Compact_Gradient_Kernel_2p(const double* p1, const double* p2, double* G) {
+
+
+    double r = MyUtility::_VerticesDistance(p1, p2) ;
+    // -4 (1-r)^3 * (4r + 1) + 4(1-r)^4
+    if (r > rbf_compact_kernel_radius)
+    {
+        for (int i = 0; i < 3; ++i)G[i] = 0;
+        return;
+    }
+    if (r < 1e-12) {
+        for (int i = 0; i < 3; ++i) G[i] = 0;
+        return;
+    }
+    double diff[3];
+    for (int i = 0; i < 3; ++i)diff[i] = (p1[i] - p2[i]) ;
+
+    //double dr = - 4 * pow(Comnpact_radius - r, 3) * (4 * r + Comnpact_radius) + 4 * pow(Comnpact_radius - r, 4);
+    double dr = 20.0 * pow(r - rbf_compact_kernel_radius, 3);
+    for (int i = 0; i < 3; ++i)G[i] = dr * diff[i] * rbf_compact_kernel_scale;
+    
+    return;
+}
+
+double Compact_GradientDot_Kernel_2p(const double* p1, const double* p2, const double* p3) {
+    double G[3];
+    Compact_Gradient_Kernel_2p(p1, p2, G);
+    return MyUtility::dot(p3, G);
+}
+
+// [-4 (1-r)^3 * (4r + 1) + 4(1-r)^4]/r
+// [12(1-r)^2 * (4r + 1) - 32(1-r)^3]/r - [-4 (1-r)^3 * (4r + 1) + 4(1-r)^4]/r^2
+
+void Compact_Hessian_Kernel_2p(const double* p1, const double* p2, double* H) {
+
+    double diff[3];
+    for (int i = 0; i < 3; ++i)diff[i] = (p1[i] - p2[i]);
+    double r = sqrt(MyUtility::len(diff));
+
+    if (r > rbf_compact_kernel_radius) {
+        for (int i = 0; i < 9; ++i)H[i] = 0;
+        return;
+    }
+
+    double dr = 20.0 * pow(r - rbf_compact_kernel_radius, 3) * rbf_compact_kernel_scale;
+    double ddr = 60.0 * pow(r - rbf_compact_kernel_radius, 2) * rbf_compact_kernel_scale;
+
+    if (r < 1e-12) {
+        for (int i = 0; i < 3; ++i)for (int j = 0; j < 3; ++j)
+            if (i == j)H[i * 3 + j] = dr;
+            else H[i * 3 + j] = 0;
+        return;
+    }
+
+    for (int i = 0; i < 3; ++i)for (int j = 0; j < 3; ++j)
+        if (i == j)H[i * 3 + j] = ddr * pow(diff[i], 2) / r + dr;
+        else H[i * 3 + j] = ddr * diff[i] * diff[j] / r;
+
+    return;
+}
+
+
+double Bump_Kernel(const double x) {
+
+    if (x > 1.0) return 0;
+    return exp(-1.0/ (1- x*x));
+}
+
+double Bump_Kernel_2p(const double* p1, const double* p2) {
+
+
+    return Bump_Kernel(MyUtility::_VerticesDistance(p1, p2));
+
+}
+
+void Bump_Gradient_Kernel_2p(const double* p1, const double* p2, double* G) {
+
+
+    double r = MyUtility::_VerticesDistance(p1, p2);
+    if (r > 1.0)
+    {
+        for (int i = 0; i < 3; ++i)G[i] = 0;
+        return;
+    }
+
+    if (abs(1.0 - r) < 1e-8)
+    {
+        for (int i = 0; i < 3; ++i)G[i] = 0;
+        return;
+    }
+    for (int i = 0; i < 3; ++i)G[i] = Bump_Kernel(r) * (-2.0) * (p1[i] - p2[i]) / ((1- r *r) * (1 - r*r));
+    return;
+
+}
+
+double Bump_GradientDot_Kernel_2p(const double* p1, const double* p2, const double* p3) {
+
+
+    double G[3];
+    Bump_Gradient_Kernel_2p(p1, p2, G);
+    return MyUtility::dot(p3, G);
+}
+
+void Bump_Hessian_Kernel_2p(const double* p1, const double* p2, double* H) {
+
+
+    double diff[3];
+    for (int i = 0; i < 3; ++i)diff[i] = p1[i] - p2[i];
+    double r = sqrt(MyUtility::len(diff));
+
+    if (1 - r < 1e-8) {
+        for (int i = 0; i < 9; ++i)H[i] = 0;
+        return;
+    }
+
+    if (r > 1.0) {
+        for (int i = 0; i < 9; ++i)H[i] = 0;
+        return;
+    }
+    /*if (r < 1e-12) {
+        for (int i = 0; i < 9; ++i)H[i] = 0;
+        return;
+    }*/
+
+    double r_root = (1 - r * r) * (1 - r * r);
+    for (int i = 0; i < 3; ++i)for (int j = 0; j < 3; ++j)
+        if (i == j)H[i * 3 + j] = 4*(2*r*r -1) * Bump_Kernel(r)* diff[i] * diff[i] /(r_root *r_root)
+            - 2.0 * Bump_Kernel(r) / r_root;
+        else H[i * 3 + j] = 4 * (2 * r * r - 1) * Bump_Kernel(r) * diff[i] * diff[j] / (r_root * r_root);
+    
+    return;
+}
+
+
+
+
+
 RBF_Core::RBF_Core(){
 
     Kernal_Function = Gaussian_Kernel;
@@ -173,7 +330,22 @@ void RBF_Core::Init(RBF_Kernal kernal){
         Kernal_Gradient_Function_2p = XCube_Gradient_Kernel_2p;
         Kernal_Hessian_Function_2p = XCube_Hessian_Kernel_2p;
         break;
-
+        
+    case Compact:
+        rbf_compact_kernel_radius = compact_radius;
+        rbf_compact_kernel_scale = 1.0 / pow(compact_radius, 5);
+        std::cout << "compact kernel radius : ................. " << rbf_compact_kernel_radius << std::endl;
+        Kernal_Function = Compact_Kernel;
+        Kernal_Function_2p = Compact_Kernel_2p;
+        Kernal_Gradient_Function_2p = Compact_Gradient_Kernel_2p;
+        Kernal_Hessian_Function_2p = Compact_Hessian_Kernel_2p;
+        break;
+    case Bump:
+        Kernal_Function = Bump_Kernel;
+        Kernal_Function_2p = Bump_Kernel_2p;
+        Kernal_Gradient_Function_2p = Bump_Gradient_Kernel_2p;
+        Kernal_Hessian_Function_2p = Bump_Hessian_Kernel_2p;
+        break;
     default:
         break;
 
@@ -200,15 +372,41 @@ inline double RBF_Core::Dist_Function(const double *p){
     n_evacalls++;
     double *p_pts = pts.data();
     static arma::vec kern(npt), kb;
+
     if(isHermite){
-        kern.set_size(npt*4);
+       
+        kern.zeros(npt*4);
         double G[3];
-        for(int i=0;i<npt;++i)kern(i) = Kernal_Function_2p(p_pts+i*3, p);
-        for(int i=0;i<npt;++i){
-            Kernal_Gradient_Function_2p(p,p_pts+i*3,G);
-            //for(int j=0;j<3;++j)kern(npt+i*3+j) = -G[j];
-            for(int j=0;j<3;++j)kern(npt+i+j*npt) = G[j];
+        //use_compact_kernel = false;
+        if (use_compact_kernel)
+        {
+            std::vector<uint32_t> results;
+            Pt3f new_p(p[0], p[1], p[2]);
+            /*cout << " rbf_compact_kernel_radius  " << rbf_compact_kernel_radius << endl;*/
+            octree.RadiusSearch(new_p, rbf_compact_kernel_radius, results);
+           /* if (results.size() > 0)
+            {
+                cout << " point " << new_p.getX() << " " << new_p.getY() << " " << new_p.getZ() << endl;
+                cout << " results size " << results.size() << endl;
+            }*/
+            
+            for (auto id : results)
+            {
+                kern(id) = Kernal_Function_2p(p_pts + id * 3, p);
+                Kernal_Gradient_Function_2p(p, p_pts + id * 3, G);
+                for (int j = 0; j < 3; ++j)kern(npt + id + j * npt) = G[j];
+            }
+
         }
+        else {
+            for (int i = 0; i < npt; ++i)kern(i) = Kernal_Function_2p(p_pts + i * 3, p);
+            for (int i = 0; i < npt; ++i) {
+                Kernal_Gradient_Function_2p(p, p_pts + i * 3, G);
+                //for(int j=0;j<3;++j)kern(npt+i*3+j) = -G[j];
+                for (int j = 0; j < 3; ++j)kern(npt + i + j * npt) = G[j];
+            }
+        }
+        
     }else{
         kern.set_size(npt);
         for(int i=0;i<npt;++i)kern(i) = Kernal_Function_2p(p_pts+i*3, p);
@@ -228,6 +426,26 @@ inline double RBF_Core::Dist_Function(const double *p){
         for(int j=0;j<4;++j)for(int k=j;k<4;++k)kb(ind++) = buf[j] * buf[k];
     }
     double poly_part = dot(kb,b);
+    /*if (kernal == Compact)
+    {
+        bool within_radius = false;
+        for (int i = 0; i < npt; ++i)
+        {
+            double r = MyUtility::_VerticesDistance(p_pts + i * 3, p);
+            if (r < rbf_compact_kernel_radius * 0.5)
+            {
+                within_radius = true;
+                break;
+            }
+        }
+        if (!within_radius)
+        {
+            poly_part = -1.0 * b[0];
+        }
+    }*/
+    
+    
+    
 
     if(0){
         cout<<"dist: "<<p[0]<<' '<<p[1]<<' '<<p[2]<<' '<<p_pts[3]<<' '<<p_pts[4]<<' '<<p_pts[5]<<' '<<
@@ -379,4 +597,9 @@ void RBF_Core::Clear_TimerRecord(){
     invM_timev.clear();
     setK_timev.clear();
 
+}
+
+void RBF_Core::BuildOctree()
+{
+    octree.InitPts(pts);
 }

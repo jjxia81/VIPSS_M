@@ -114,7 +114,7 @@ void NormalOptimizer::CombineNormalAndSigns()
 
 void NormalOptimizer::SetRBFEnergyInput()
 {
-	rbf_e_.SetPts(this->pts_all_, this->normals_all_);
+	// rbf_e_.SetPts(this->pts_all_, this->normals_all_);
 }
 
 
@@ -141,8 +141,8 @@ void NormalOptimizer::OptimizeNormalSigns()
 
 	std::cout << "------------------- lambda 0 : " << rbf_e_.rbf_para_.user_lamnbda << std::endl;
 	rbf_e_.InitRBFCore();
-	rbf_e_.rbf_core_->BuildK(rbf_e_.rbf_para_);
-	arma::mat& final_H = rbf_e_.rbf_core_->finalH;
+	rbf_e_.rbf_core_.BuildK(rbf_e_.rbf_para_);
+	arma::mat& final_H = rbf_e_.rbf_core_.finalH;
 	auto t1 = Clock::now();
 	cout << "UpdateGradient time: " << (re_time = std::chrono::nanoseconds(t1 - t0).count() / 1e9) << endl;
 
@@ -189,7 +189,8 @@ void NormalOptimizer::OptimizeNormalSigns()
 	// rbf_e_.pts_ = pts_all_;
 	// rbf_e_.gradients_ = normals_all_;
 	// rbf_e_.pt_n_ = pts_all_.size() /3;
-	rbf_e_.RunTestWithOptNormal();
+
+	// rbf_e_.RunTestWithOptNormal();
 }
 
 void NormalOptimizer::NormalizePts()

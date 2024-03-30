@@ -57,7 +57,7 @@ def add_normal_noise_with_condition(points, normals):
     normals = normals / lens
     np.random.seed(10)
     for i in range(n_rows):
-        normals[i,:] = rotate_normal(normals[i,:], 45)
+        normals[i,:] = rotate_normal(normals[i,:], 30)
     
     gradients = normals.copy()
     for i in range(n_rows):
@@ -146,7 +146,7 @@ def rotate_normal(normal_vec, degree):
     # trans = np.linalg.inv(r) @ s_normal
     # trans = r @ s_normal
     return s_normal.reshape((1,3))
-    print(trans)
+    # print(trans)
     
 def convert_vertices(vertices):
     n_rows = vertices.shape[0]
@@ -157,28 +157,33 @@ def convert_vertices(vertices):
                                                  ('nx', 'f4'), ('ny', 'f4'),('nz', 'f4')])
     return new_vertices
 
+def add_noise_to_normal(normals, degree):
+    n_rows = normals.shape[0]
+    for i in range(n_rows):
+        normals[i,:] = rotate_normal(normals[i,:], degree)
+    return normals
 
 def sample_normal():
-    ply_file = "/home/jjxia/Documents/projects/VIPSS/data/torus/multisample_n50/input_normal.ply"
+    ply_file = "../data/torus/torus_energy/2000.ply"
 
     points, normals = load_ply_file(ply_file)
     # new_normals = add_normal_noise(normals)
-    new_normals, gradients = add_normal_noise_with_condition(points, normals)
+    # new_normals, gradients = add_normal_noise_with_condition(points, normals)
+    new_normals = add_noise_to_normal(normals, 30)
     vertices = np.concatenate((points, new_normals), axis=1)
     new_vertices = convert_vertices(vertices)
-
-    tangents = np.zeros_like(gradients)
-    new_gradients = np.concatenate((gradients, tangents), axis=1)
-    new_gradients = convert_vertices(new_gradients)
-    # print(points)
-    # print(vertices)
-    out_dir = "/home/jjxia/Documents/projects/VIPSS/data/torus/multisample_n50/noise_normal.ply"
+    out_dir = "../data/torus/torus_energy/2000_noise_normal.ply"
     el = PlyElement.describe(new_vertices, 'vertex')
     PlyData([el], text=True).write(out_dir)
 
-    out_dir = "/home/jjxia/Documents/projects/VIPSS/data/torus/multisample_n50/noise_gradients.ply"
-    gd = PlyElement.describe(new_gradients, 'vertex')
-    PlyData([gd], text=True).write(out_dir)
+    # tangents = np.zeros_like(gradients)
+    # new_gradients = np.concatenate((gradients, tangents), axis=1)
+    # new_gradients = convert_vertices(new_gradients)
+    # # print(points)
+    # # print(vertices)
+    # out_dir = "../data/torus/torus_energy/noise_gradients.ply"
+    # gd = PlyElement.describe(new_gradients, 'vertex')
+    # PlyData([gd], text=True).write(out_dir)
     
     
 # test_normal_sample()

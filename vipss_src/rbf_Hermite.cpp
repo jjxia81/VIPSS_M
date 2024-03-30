@@ -19,6 +19,11 @@ typedef std::chrono::high_resolution_clock Clock;
 double randomdouble() {return static_cast <double> (rand()) / static_cast <double> (RAND_MAX);}
 double randomdouble(double be,double ed) {return be + randomdouble()*(ed-be);	}
 
+void RBF_Core::AssignInitNormals(const std::vector<double>& in_normals)
+{
+    initnormals = in_normals;
+}
+
 void RBF_Core::NormalRecification(double maxlen, vector<double>&nors){
 
 
@@ -77,8 +82,8 @@ bool RBF_Core::Write_Hermite_NormalPrediction(string fname, int mode){
     //cout<<pts.size()<<' '<<f2v.size()<<' '<<nors.size()<<' '<<labelcolor.size()<<endl;
     //writePLYFile(fname,pts,f2v,nors,labelcolor);
 
-//    writeObjFile_vn(fname,pts,nors);
-    writePLYFile_VN(fname,pts,nors);
+    //writeObjFile_vn(fname,pts,nors);
+    writePLYFile_VN(fname,pts, initnormals);
 
     return 1;
 }
@@ -171,6 +176,10 @@ void RBF_Core::Set_HermiteRBF(vector<double>&pts){
     //cout<<N<<endl;
     //arma::vec eigval = eig_sym( M ) ;
     //cout<<eigval.t()<<endl;
+    if(only_build_M)
+    {
+        return;
+    }
 
 
     if(!isnewformula){
@@ -194,9 +203,199 @@ void RBF_Core::Set_HermiteRBF(vector<double>&pts){
         cout<<"solved bprey "<<std::chrono::nanoseconds(Clock::now() - t1).count()/1e9<<endl;
     }else{
 
-
-
     }
+}
+
+
+
+void RBF_Core::Set_HermiteRBFSparse(vector<double>& pts, double kernel_dist) {
+
+    cout << "Set_HermiteRBF sparse" << endl;
+    //for(auto a:pts)cout<<a<<' ';cout<<endl;
+    isHermite = true;
+    auto t1 = Clock::now();
+    BuildOctree();
+    auto t2 = Clock::now();
+    cout << "Build octree time: " << (std::chrono::nanoseconds(t2 - t1).count() / 1e9) << endl;
+
+    auto t3 = Clock::now();
+    std::vector<std::vector<uint32_t>> pt_pair_ids;
+    arma::mat dist_simbol = arma::ones(npt, npt) * -1.0;
+    for (int i = 0; i < npt; ++i) {
+        Pt3f new_p(pts[3 * i], pts[3 * i + 1], pts[3 * i + 2]);
+        std::vector<uint32_t> results;
+        octree.RadiusSearch(new_p, (float)kernel_dist, results);
+        pt_pair_ids.push_back(results);
+    }
+    auto t4 = Clock::now();
+    cout << "Octree radius search time: " << (std::chrono::nanoseconds(t4 - t3).count() / 1e9) << endl;
+
+    std::cout << " use eigen sparse " << use_eigen_sparse << std::endl;
+
+    typedef Eigen::Triplet<double> Tri;
+    std::vector<Tri> s_tripletList;
+    std::vector<Tri> g_tripletList;
+    std::vector<Tri> m_tripletList;
+
+    //a.set_size(npt * 4);
+    if (use_eigen_sparse)
+    {
+        M_es.resize(npt * 4 + 4, npt * 4 + 4);
+        F_s_sp.resize(npt, npt* 4 + 4);
+        F_g_sp.resize(3 * npt, npt * 4 + 4);
+    }
+    else {
+        M_s.set_size(npt * 4, npt * 4);
+    }
+    
+    double* p_pts = pts.data();
+    for (int i = 0; i < npt; ++i) {
+        for (auto j : pt_pair_ids[i])
+        {
+            if (use_eigen_sparse)
+            {
+                //if (M_es.insert(i, j) != 0) continue;
+                double val = Kernal_Function_2p(p_pts + i * 3, p_pts + j * 3);
+                Tri ele(i, j, val);
+                m_tripletList.push_back(ele);
+                s_tripletList.push_back(ele);
+               /* M_es.insert(i, j) = val;
+                M_es.insert(j, i) = val;
+                F_s_sp.insert(i, j) = val;
+                F_s_sp.insert(j, i) = val;*/
+            }
+            else {
+                if (M_s(i, j) != 0) continue;
+                M_s(i, j) = M_s(j, i) = Kernal_Function_2p(p_pts + i * 3, p_pts + j * 3);
+            }
+            
+        }
+    }
+
+    std::cout << " Finish Matrix kernel value " << std::endl;
+    double G[3];
+    for (int i = 0; i < npt; ++i) {
+        for (auto j : pt_pair_ids[i])
+        {
+            Kernal_Gradient_Function_2p(p_pts + i * 3, p_pts + j * 3, G);
+            if (use_eigen_sparse)
+            {
+                for (int k = 0; k < 3; ++k)
+                {
+                    Tri ele(i, npt + j + k * npt, G[k]);
+                    m_tripletList.push_back(ele);
+                    s_tripletList.push_back(ele);
+
+                    Tri ele1(npt + j + k * npt, i, G[k]);
+                    m_tripletList.push_back(ele1);
+
+                    Tri ele2(j + k * npt, i, G[k]);
+                    g_tripletList.push_back(ele);
+                }
+                
+            }
+            else {
+                for (int k = 0; k < 3; ++k)M_s(i, npt + j + k * npt) = G[k];
+                for (int k = 0; k < 3; ++k)M_s(npt + j + k * npt, i) = G[k];
+            }
+
+        }
+    }
+    std::cout << " Finish Matrix kernel gradient value " << std::endl;
+
+    double H[9];
+    for (int i = 0; i < npt; ++i) {
+        for (auto j : pt_pair_ids[i])
+        {
+            /*if (M_s(npt + j, npt + i) != 0) continue;*/
+            
+            if (use_eigen_sparse)
+            {
+                Kernal_Hessian_Function_2p(p_pts + i * 3, p_pts + j * 3, H);
+                for (int k = 0; k < 3; ++k)
+                    for (int l = 0; l < 3; ++l)
+                    {
+                        Tri ele(npt + j + l * npt, npt + i + k * npt, -H[k * 3 + l]);
+                        m_tripletList.push_back(ele);
+                        /*M_es.insert(npt + j + l * npt, npt + i + k * npt) = -H[k * 3 + l];
+                        M_es.insert(npt + i + k * npt, npt + j + l * npt) = -H[k * 3 + l];*/
+                        Tri ele1(j + l * npt, npt + i + k * npt, -H[k * 3 + l]);
+                        g_tripletList.push_back(ele1);
+                        /*F_g_sp.insert(j + l * npt, npt + i + k * npt) = -H[k * 3 + l];
+                        F_g_sp.insert(i + k * npt, npt + j + l * npt) = -H[k * 3 + l];*/
+                    }    
+            }
+            else {
+                if (M_s(npt + j, npt + i) != 0) continue;
+                Kernal_Hessian_Function_2p(p_pts + i * 3, p_pts + j * 3, H);
+                for (int k = 0; k < 3; ++k)
+                    for (int l = 0; l < 3; ++l)
+                        M_s(npt + j + l * npt, npt + i + k * npt) =
+                        M_s(npt + i + k * npt, npt + j + l * npt) = -H[k * 3 + l];
+            }
+            
+        
+        }
+        
+    }
+    std::cout << " Finish Matrix kernel Hessian gradient value " << std::endl;
+
+    //cout<<std::setprecision(5)<<std::fixed<<M<<endl;
+    if (use_eigen_sparse)
+    {
+        /*bsize = 4;
+        N.zeros(npt * 4, 4);
+        b.set_size(4);*/
+        //N_es.resize(npt * 4, 4);
+        for (int i = 0; i < npt; ++i) {
+            Tri ele(i, npt * 4, 1);
+            s_tripletList.push_back(ele);
+
+            for (int j = 0; j < 3; ++j)
+            {
+                Tri ele1(i, npt * 4 + j, pts[i * 3 + j]);
+                s_tripletList.push_back(ele1);
+            }
+
+            for (int j = 0; j < 3; ++j)
+            {
+                Tri ele1(i + j * npt, j + npt * 4 + 1, -1);
+                g_tripletList.push_back(ele1);
+            }
+
+        }
+
+        
+        
+    }
+    else {
+        bsize = 4;
+        N.zeros(npt * 4, 4);
+        b.set_size(4);
+
+        for (int i = 0; i < npt; ++i) {
+            N(i, 0) = 1;
+            for (int j = 0; j < 3; ++j)N(i, j + 1) = pts[i * 3 + j];
+        }
+        for (int i = 0; i < npt; ++i) {
+            //        int ind = i*3+npt;
+            //        for(int j=0;j<3;++j)N(ind+j,j+1) = 1;
+
+            for (int j = 0; j < 3; ++j)N(npt + i + j * npt, j + 1) = -1;
+        }
+    }
+
+    if (use_eigen_sparse)
+    {
+        cout << "S mat size " << s_tripletList.size();
+        F_s_sp.setFromTriplets(s_tripletList.begin(), s_tripletList.end());
+        cout << " " << F_s_sp.nonZeros() << endl;
+
+        F_g_sp.setFromTriplets(g_tripletList.begin(), g_tripletList.end());
+        M_es.setFromTriplets(m_tripletList.begin(), m_tripletList.end());
+    }
+    
+    return;
 }
 
 
@@ -241,7 +440,10 @@ void RBF_Core::Set_User_Lamnda_ToMatrix(double user_ls){
                 saveK_finalH = K = K11 - (User_Lamnbda)*(K01.t()*dI*K01);
             }
             
-        }else saveK_finalH = K = K11;
+        }else 
+        {
+            saveK_finalH = K = K11;
+        }
         cout<<"solved: "<<(std::chrono::nanoseconds(Clock::now() - t1).count()/1e9)<<endl;
     }
     finalH = saveK_finalH;
@@ -264,7 +466,7 @@ void RBF_Core::Set_HermiteApprox_Lamnda(double hermite_ls){
                     std::cout << "ws size " << Ws.n_rows << " " << Ws.n_cols << std::endl;
                     if(Ws.n_rows > 0)
                     {
-                        K = (ls_coef+User_Lamnbda) * Minv + Ws;
+                        K = (ls_coef+User_Lamnbda) * Minv + user_beta * Ws;
                     } else {
                         K = (ls_coef+User_Lamnbda) * Minv;
                     }
@@ -325,10 +527,27 @@ void RBF_Core::Set_Hermite_PredictNormal(vector<double>&pts){
                 arma::mat Jk = bigMinv.submat(0,0,npt*4 + 3,npt*4-1);
                 Ws = As_ * Jk;
                 Ws = Ws.t() * Ws; 
-                K = User_Lamnbda * Minv + Ws;
+                if(auxi_npt > npt)
+                {
+                    // user_beta = double(npt) / double(auxi_npt);
+                    user_beta = 1.0;
+                }
+                if(User_Lamnbda> 0)
+                {
+                    K = User_Lamnbda * Minv + user_beta * Ws;
+                } else {
+                    K = Minv + user_beta * Ws;
+                }
+                
             } else 
             {
-                K = User_Lamnbda * Minv;
+                if(User_Lamnbda > 0)
+                {
+                    K = User_Lamnbda * Minv;
+                } else {
+                    K =  Minv;
+                }
+                
             }
 
             
@@ -348,6 +567,14 @@ void RBF_Core::Set_Hermite_PredictNormal(vector<double>&pts){
         K00 = K.submat(0,0,npt-1,npt-1);
         K01 = K.submat(0,npt,npt-1,npt*4-1);
         K11 = K.submat( npt, npt, npt*4-1, npt*4-1 );
+
+        if(apply_sample && User_Lamnbda <= 1e-12)
+        {
+            arma::sp_mat eye;
+            eye.eye(npt,npt);
+            dI = inv(eye + K00);
+        }
+        
 
         M.clear();N.clear();
         cout<<"K11: "<<K11.n_cols<<endl;
@@ -557,6 +784,21 @@ int RBF_Core::Opt_Hermite_PredictNormal_UnitNormal(){
     return 1;
 }
 
+void RBF_Core::Opt_Hermite_With_InputNormal()
+{
+    std::cout << "start to init rbf y " << endl;
+    arma::vec y(npt * 4);
+    for (int i = 0; i < npt; ++i)y(i) = 0;
+    for (int i = 0; i < npt; ++i) {
+        y(npt + i) = initnormals[i * 3];
+        y(npt + i + npt) = initnormals[i * 3 + 1];
+        y(npt + i + npt * 2) = initnormals[i * 3 + 2];
+    }
+    std::cout << "start to set rbf y " << endl;
+    Set_RBFCoef(y);
+    std::cout << "finish set RBF coef " << endl;
+}
+
 void RBF_Core::CalculateAuxiDistanceVal(const std::string& color_file, bool save_color)
 {
     arma::mat func_para =  arma::join_cols(a,b);
@@ -628,13 +870,11 @@ void RBF_Core::Set_RBFCoef(arma::vec &y){
         else {
             if (User_Lamnbda > 0)y.subvec(0, npt - 1) = -User_Lamnbda * dI * K01 * y.subvec(npt, npt * 4 - 1);
         }
-        
-
         a = Minv*y;
         b = Ninv.t()*y;
-
     }
 
+    cout << " b : " << b << endl; 
 
 }
 
@@ -642,8 +882,8 @@ void RBF_Core::Set_RBFCoef(arma::vec &y){
 
 int RBF_Core::Lamnbda_Search_GlobalEigen(){
 
-    // vector<double>lamnbda_list({0, 0.001, 0.01, 0.1, 1});
-    vector<double>lamnbda_list({0.001, 0.01, 0.1, 1});
+    vector<double>lamnbda_list({0, 0.001, 0.01, 0.1, 1});
+    // vector<double>lamnbda_list({0.001, 0.01, 0.1, 1});
     //vector<double>lamnbda_list({  0.5,0.6,0.7,0.8,0.9,1,1.1,1.5,2,3});
     //lamnbda_list.clear();
     //for(double i=1.5;i<2.5;i+=0.1)lamnbda_list.push_back(i);
@@ -727,3 +967,26 @@ void RBF_Core::Print_LamnbdaSearchTest(string fname){
 }
 
 
+
+void RBF_Core::clearMemory()
+{
+    K.clear();
+    As_.clear();
+    Ws.clear();
+    finalH.clear();
+    saveK_finalH.clear();
+    saveK_finalH_incre.clear();
+    K_incre_.clear();
+    Minv.clear();
+    dI.clear();
+    M.clear();
+    N.clear();
+
+    K00.clear();
+    K01.clear();
+    K11.clear();
+
+    Ninv.clear();
+    Minv.clear();
+    
+}

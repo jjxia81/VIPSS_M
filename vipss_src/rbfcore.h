@@ -1,9 +1,6 @@
 #ifndef RBFCORE_H
 #define RBFCORE_H
 
-
-
-
 #include <iostream>
 #include <vector>
 #include "Solver.h"
@@ -11,7 +8,13 @@
 //#include "eigen3/Eigen/Dense"
 #include <armadillo>
 #include <unordered_map>
+#include "rbf_octree.h"
+#include "Eigen/Sparse"
+
 using namespace std;
+
+typedef Eigen::SparseMatrix<double> SpMat;
+
 
 enum RBF_INPUT{
     ON,
@@ -60,6 +63,8 @@ enum RBF_Kernal{
     ThinSpline,
     XLinear,
     Gaussian,
+    Compact,
+    Bump,
 };
 
 class RBF_Paras{
@@ -78,6 +83,7 @@ public:
     double Hermite_designcurve_weight;
     double ClusterCut_percentage;
     double ClusterCut_LocalMax_percentage;
+    double compact_radius;
     int ClusterVisualMethod;
     double wDir,wOrt,wFlip,handcraft_sigma;
     RBF_Paras(RBF_METHOD Method, RBF_Kernal Kernal, int polyDeg, double sigma, double user_lamnbda,double rangevalue):\
@@ -101,6 +107,7 @@ public:
     bool isnewformula = true;
     double User_Lamnbda;
     bool apply_sample = false;
+    bool only_build_M = false;
 
     RBF_Kernal kernal;
     RBF_METHOD curMethod;
@@ -118,6 +125,8 @@ public:
     vector<double>tangents;
     vector<uint>edges;
     vector<int>labels;
+    CustomOctree octree;
+    bool use_eigen_sparse;
 
 private:
 
@@ -141,6 +150,13 @@ public:
 
     arma::mat M;
     arma::mat N;
+    arma::sp_mat M_s;
+    arma::sp_mat N_s;
+    SpMat M_es;
+    SpMat N_es;
+    SpMat F_s_sp;
+    SpMat F_g_sp;
+
 
     arma::vec a;
     arma::vec b;
@@ -172,6 +188,7 @@ public:
     bool isuse_sparse = false;
     bool opt_incre = false;
     double sparse_para = 1e-3;
+    bool use_compact_kernel = true;
 
 public:
     unordered_map<int, string>mp_RBF_INITMETHOD;
@@ -196,6 +213,7 @@ public:
     bool sample_iter = false;
     double sample_threshold = 0.001;
     size_t incre_num = 10;
+    double compact_radius = 1.0;
 
     double ls_coef;
     void (*Kernal_Gradient_Function_2p)(const double *p1, const double *p2, double *G);
@@ -216,6 +234,7 @@ public:
     RBF_Core();
     RBF_Core(RBF_Kernal kernal);
     void Init(RBF_Kernal kernal);
+    void BuildOctree();
 
 
 public:
@@ -238,11 +257,13 @@ public:
 
 
     void NormalRecification(double maxlen, vector<double> &nors);
+    void AssignInitNormals(const std::vector<double>& in_normals);
 
 
 
 public:
     void Set_HermiteRBF(vector<double>&pts);
+    void Set_HermiteRBFSparse(vector<double>& pts, double kernel_dist = 0.1);
     int Solve_HermiteRBF(vector<double>&vn);
 
 public:
@@ -258,6 +279,7 @@ public:
 
 public:
     int Solve_Hermite_PredictNormal_UnitNormal();
+    void Opt_Hermite_With_InputNormal();
 
 public:
 
@@ -277,6 +299,7 @@ public:
     void Set_User_Lamnda_ToMatrix(double user_ls);
 
     void Set_SparsePara(double spa);
+
 
 
 public:
@@ -317,6 +340,7 @@ public:
 
     void BatchInitEnergyTest(vector<double> &pts, vector<int> &labels, vector<double> &normals, vector<double> &tangents, vector<uint> &edges, RBF_Paras para);
 
+    void clearMemory();
 
 public:
     vector<double>* ExportPts();

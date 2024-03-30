@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 #include "rbf_energy_para.h"
+#include "Eigen/Dense"
+
 
 //struct RBF_Energy_PARA{
 //    bool enable_debug = false;
@@ -55,6 +57,10 @@ class RBF_Energy
         double CalculateSurfaceEnergy() const;
         double CalculateAllEnergy() const;
         void SolveVipss();
+        void SolveWithVipssOptNormal();
+
+        void VisualFuncValues();
+        void VisualSamplePtsFuncValues();
         
     private:
         
@@ -63,7 +69,9 @@ class RBF_Energy
         void BuildGradientTermMat();
         void BuildMatrixB();
         void BuildConditionMat();
-        void BuildHessianMat();
+        void BuildMatrixH();
+        void BuildMatrixHSparse();
+        void BuildMatrixHEigenSparse();
         void BuildEnergyMatrix();
         void SolveEnergyMatrix();
         void BuildConfidenceMat();
@@ -74,6 +82,7 @@ class RBF_Energy
         void UpdateHAndBMat();
         void SolveRBFIterate();
         void CalNewNormalMat();
+        void SolveIncreVipss();
         
         
         // void SaveMatrix();
@@ -91,6 +100,7 @@ class RBF_Energy
         arma::mat B_;
         arma::mat B_reduced_;
         arma::mat H_;
+        arma::sp_mat H_sp_;
         arma::mat H_v_;
         arma::mat H_g_;
         arma::mat D_M_; // Duchon energy mat
@@ -110,14 +120,21 @@ class RBF_Energy
         arma::mat X_reduced_;
         std::vector<uint8_t> pt_colors_;
         double beta_weights_ = 1.0;
-        size_t max_iter_num_ = 10;
+        size_t max_iter_num_ = 1;
         double iter_threshold_ = 0.0001;
         double normal_delt_avg_ = 0;
 
+        SpMat H_esp_;
+        SpMat B_esp_;
+        Eigen::VectorXd B_e_;
+
+
     public:
-        std::shared_ptr<RBF_Core> rbf_core_;
+        //std::shared_ptr<RBF_Core> rbf_core_;
+        RBF_Core rbf_core_;
         RBF_Paras rbf_para_;
         RBF_Energy_PARA e_para_;
+        bool only_build_M_ = false;
         // std::shared_ptr<RBF_Energy_PARA> para_ptr_;
         // bool enable_debug_;
         // bool is_surfacing_;
