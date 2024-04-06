@@ -24,6 +24,8 @@ public:
     double dSize;
     int iBound;
 
+    bool use_compact_kernel = false;
+    double compact_kernel_radius;
 
     Surfacer(){}
 

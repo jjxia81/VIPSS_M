@@ -50,14 +50,21 @@ void Surfacer::CalSurfacingPara(vector<double>&Vs, int nvoxels){
     //dSize = width * 0.02;
     dSize = width * (1./nvoxels);
 
+    if(use_compact_kernel)
+    {
+        dSize = compact_kernel_radius * 0.25;
+    }
+
     if(0){
 
     }else{
         for(int j=0;j<3;++j){
-            /*st[j] = midpoint[j];*/
-            st[j] = Vs[j];
+            st[j] = midpoint[j];
+            if(use_compact_kernel)
+            {
+                st[j] = Vs[j];
+            }
         }
-        
         iBound = (int) (width / dSize  * 1.5);
 
     }
@@ -80,10 +87,7 @@ double Surfacer::Surfacing_Implicit(vector<double>&Vs,int n_voxels, bool ischeck
 
     double re_time;
     cout<<"Implicit Surfacing: "<<endl;
-
     auto t1 = Clock::now();
-
-
 
 
     if(!ischeckall){

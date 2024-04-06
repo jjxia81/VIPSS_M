@@ -458,22 +458,22 @@ void RBF_Core::Set_HermiteApprox_Lamnda(double hermite_ls){
             eye.eye(npt,npt);
 
             if(ls_coef > 0){
-                if(apply_sample)
-                {
-                    std::cout << "ws size " << Ws.n_rows << " " << Ws.n_cols << std::endl;
-                    if(Ws.n_rows > 0)
-                    {
-                        K = (ls_coef+User_Lamnbda) * Minv + user_beta * Ws;
-                    } else {
-                        K = (ls_coef+User_Lamnbda) * Minv;
-                    }
+                // if(apply_sample)
+                // {
+                //     std::cout << "ws size " << Ws.n_rows << " " << Ws.n_cols << std::endl;
+                //     if(Ws.n_rows > 0)
+                //     {
+                //         K = (ls_coef+User_Lamnbda) * Minv + user_beta * Ws;
+                //     } else {
+                //         K = (ls_coef+User_Lamnbda) * Minv;
+                //     }
 
-                    K00 = K.submat(0,0,npt-1,npt-1);
-                    K01 = K.submat(0,npt,npt-1,npt*4-1);
-                    K11 = K.submat( npt, npt, npt*4-1, npt*4-1 );
-                    arma:: mat tmpdI = inv(eye + K00);
-                    K = K11 - (K01.t()*tmpdI*K01);
-                } else
+                //     K00 = K.submat(0,0,npt-1,npt-1);
+                //     K01 = K.submat(0,npt,npt-1,npt*4-1);
+                //     K11 = K.submat( npt, npt, npt*4-1, npt*4-1 );
+                //     arma:: mat tmpdI = inv(eye + K00);
+                //     K = K11 - (K01.t()*tmpdI*K01);
+                // } else
                 {
                     arma:: mat tmpdI = inv(eye + (ls_coef+User_Lamnbda)*K00);
                     K = K11 - (ls_coef+User_Lamnbda)*(K01.t()*tmpdI*K01);
@@ -524,10 +524,10 @@ void RBF_Core::Set_Hermite_PredictNormal(vector<double>&pts){
                 arma::mat Jk = bigMinv.submat(0,0,npt*4 + 3,npt*4-1);
                 Ws = As_ * Jk;
                 Ws = Ws.t() * Ws; 
-                if(auxi_npt > npt)
+                if(auxi_npt > 20 * npt)
                 {
-                    // user_beta = double(npt) / double(auxi_npt);
-                    user_beta = 1.0;
+                    user_beta = 2 * double(npt) / double(auxi_npt);
+                    // user_beta = 1.0;
                 }
                 if(User_Lamnbda> 0)
                 {
@@ -685,13 +685,13 @@ double optfunc_Hermite(const vector<double>&x, vector<double>&grad, void *fdata)
     //if(drbf->isuse_sparse)a2 = drbf->sp_H * arma_x;
     //else
     //std::cout << " .............opt_incre  "<< drbf->opt_incre << std::endl;
-    /*if(drbf->apply_sample && drbf->opt_incre)
-    {
-        a2 = drbf->saveK_finalH_incre * arma_x;
-        std::cout << " a2  "<< a2.n_rows << std::endl;
-    } else {
-        a2 = drbf->finalH * arma_x;
-    }*/
+    // if(drbf->apply_sample && drbf->opt_incre)
+    // {
+    //     a2 = drbf->saveK_finalH_incre * arma_x;
+    //     // std::cout << " a2  "<< a2.n_rows << std::endl;
+    // } else {
+    //     a2 = drbf->finalH * arma_x;
+    // }
 
     a2 = drbf->finalH * arma_x;
     
@@ -860,11 +860,12 @@ void RBF_Core::Set_RBFCoef(arma::vec &y){
         b = bprey * y;
         a = Minv * (y - N*b);
     }else{
-        if (apply_sample)
+        // if (apply_sample)
+        // {
+        //     y.subvec(0, npt - 1) = - dI * K01 * y.subvec(npt, npt * 4 - 1);
+        // }
+        // else 
         {
-            y.subvec(0, npt - 1) = - dI * K01 * y.subvec(npt, npt * 4 - 1);
-        }
-        else {
             if (User_Lamnbda > 0)y.subvec(0, npt - 1) = -User_Lamnbda * dI * K01 * y.subvec(npt, npt * 4 - 1);
         }
         a = Minv*y;

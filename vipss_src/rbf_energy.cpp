@@ -83,6 +83,31 @@ RBF_Energy::~RBF_Energy()
     
 }
 
+void RBF_Energy::SetVIPSSPara(){
+
+    RBF_Paras& para = vipss_para_;
+    RBF_InitMethod initmethod = Lamnbda_Search;
+    
+    int polyDeg = 1;
+    double sigma = 0.9;
+    double rangevalue = 0.001;
+
+    para.Kernal = XCube;
+    para.polyDeg = polyDeg;
+    para.sigma = sigma;
+    para.rangevalue = rangevalue;
+    para.Hermite_weight_smoothness = 0.0;
+    para.Hermite_ls_weight = 0;
+    para.Hermite_designcurve_weight = 00.0;
+    para.Method = RBF_METHOD::Hermite_UnitNormal;
+
+    para.InitMethod = initmethod;
+    para.user_lamnbda = e_para_.e_beta;
+    para.isusesparse = false;
+    // return para;
+}
+
+
 void RBF_Energy::SetRBFPara(){
 
     RBF_Paras& para = rbf_para_;
@@ -778,7 +803,7 @@ void RBF_Energy::SolveReducedLinearSystem()
                 X_ = SVD_V_ * X_reduced_;
         }
         else {
-            X_reduced_ = arma::solve(H_, B_reduced_.t(), arma::solve_opts::likely_sympd);
+            X_reduced_ = arma::solve(H_, B_reduced_.t(), arma::solve_opts::fast);
             //X_reduced_ = arma::solve(H_, B_reduced_.t(), arma::solve_opts::fast);
             H_.clear();
             X_ = SVD_V_ * X_reduced_;
@@ -864,14 +889,14 @@ void RBF_Energy::RunTest()
     SetPts(e_para_.mesh_points_path);
     // std::cout << "e_para_.use_gradient " << e_para_.use_gradient << std::endl;
     
-    if(e_para_.use_gradient)
-    {
-        LoadPtsGradients(e_para_.gradients_path);
-        std::cout <<"Load gradients succeed !" << std::endl;
-        ProcessGradientsAndConfidenceMat();
-    }
+    // if(e_para_.use_gradient)
+    // {
+    //     LoadPtsGradients(e_para_.gradients_path);
+    //     std::cout <<"Load gradients succeed !" << std::endl;
+    //     ProcessGradientsAndConfidenceMat();
+    // }
     
-    NormalizePts();
+    // NormalizePts();
      
     SaveFuncInputs();
     auto t3 = Clock::now();
@@ -895,12 +920,12 @@ void RBF_Energy::RunTest()
 void RBF_Energy::RunTestWithOptNormal()
 {
     double re_time;
-    cout<<"start solve rbf matrix "<<endl;
+    cout<<"start solve rbf matrix RunTestWithOptNormal "<<endl;
     // std::cout << "e_para_.use_gradient " << e_para_.use_gradient << std::endl;
     auto t1 = Clock::now();
     auto t2 = Clock::now();
 
-    NormalizePts();
+    // NormalizePts();
     SaveFuncInputs();
     auto t3 = Clock::now();
     cout << "set pts time: " <<  (re_time = std::chrono::nanoseconds(t3 - t2).count()/1e9) <<endl;
@@ -969,7 +994,7 @@ void RBF_Energy::SolveRBF()
     }
     if (e_para_.save_estimate_normal)
     {
-        EstimateRBFNormals();
+        EstimateRBFNormals(rbf_core_.Dist_Function);
     }
 }
 
@@ -1034,32 +1059,33 @@ void RBF_Energy::SolveRBFIterate()
     }
     if (e_para_.save_estimate_normal)
     {
-        EstimateRBFNormals();
+        EstimateRBFNormals(rbf_core_.Dist_Function);
     }
 }
 
-void RBF_Energy::EstimateRBFNormals()
+void RBF_Energy::EstimateRBFNormals(double (*function)(const R3Pt &in_pt))
 {
     // std::vector<arma::vec3> estimated_normals;
     std::vector<double> estimated_normals;
-    std::vector<double> estimated_normals_normalized;
+    // std::vector<double> estimated_normals_normalized;
+    estimated_normals_normalized_.clear();
     double delta = 0.000001;
     pt_n_ = pts_.size() / 3;
     cout << "  save pt normals num: " << pt_n_<< endl;
     for(size_t i = 0; i < pt_n_; ++i)
     {
         const R3Pt pt(pts_[i*3], pts_[i*3 + 1], pts_[i*3 + 2]);
-        double dist = rbf_core_.Dist_Function(pt);
+        double dist = function(pt);
         const R3Pt pt_x(pts_[i*3] + delta, pts_[i*3 + 1], pts_[i*3 + 2]);
-        double dist_x = rbf_core_.Dist_Function(pt_x);
+        double dist_x = function(pt_x);
         double dx = -1.0 * (dist_x - dist) / delta;
 
         const R3Pt pt_y(pts_[i*3], pts_[i*3 + 1] + delta, pts_[i*3 + 2]);
-        double dist_y = rbf_core_.Dist_Function(pt_y);
+        double dist_y = function(pt_y);
         double dy = -1.0 * (dist_y - dist) / delta;
 
         const R3Pt pt_z(pts_[i*3], pts_[i*3 + 1], pts_[i*3 + 2] + delta);
-        double dist_z = rbf_core_.Dist_Function(pt_z);
+        double dist_z = function(pt_z);
         double dz = -1.0 * (dist_z - dist) / delta;
 
         double n_len = sqrt(dx * dx + dy * dy + dz * dz);
@@ -1068,14 +1094,10 @@ void RBF_Energy::EstimateRBFNormals()
         estimated_normals.push_back(dy);
         estimated_normals.push_back(dz);
 
-        estimated_normals_normalized.push_back(dx/n_len );
-        estimated_normals_normalized.push_back(dy/n_len );
-        estimated_normals_normalized.push_back(dz/n_len);
+        estimated_normals_normalized_.push_back(dx/n_len );
+        estimated_normals_normalized_.push_back(dy/n_len );
+        estimated_normals_normalized_.push_back(dz/n_len);
         
-    }
-    if( max_iter_num_ <= 1)
-    {
-        this->gradients_ = estimated_normals_normalized;
     }
     
     // rbf_core_.newnormals = estimated_normals;
@@ -1092,7 +1114,7 @@ void RBF_Energy::EstimateRBFNormals()
         writePLYFile_VN(out_path, pts_, estimated_normals);
         std::string out_path2 = e_para_.out_dir + "_out_ptn_normalized";
         cout << "  save pt normals : " << out_path2  << endl;
-        writePLYFile_VN(out_path2, pts_, estimated_normals_normalized);
+        writePLYFile_VN(out_path2, pts_, estimated_normals_normalized_);
     }
 }
 
@@ -1321,7 +1343,7 @@ double RBF_Energy::CalculateAllEnergy() const
 void RBF_Energy::SolveIncreVipss()
 {
     /*RBF_Core rbf_core;*/
-    this->SetRBFPara();
+    this->SetVIPSSPara();
     vector<double>Vs;
     std::vector<double> vn;
     readPLYFile(e_para_.mesh_points_path, Vs, vn);
@@ -1348,61 +1370,61 @@ void RBF_Energy::SolveIncreVipss()
     
     PTSample::FurthestSamplePointCloud(Vs, sample_num, key_vs, auxi_vs);
 
-    rbf_core_.apply_sample = e_para_.vipss_apply_sample;
-    rbf_core_.user_beta = e_para_.vipss_beta;
+    vipss_core_.apply_sample = e_para_.vipss_apply_sample;
+    vipss_core_.user_beta = e_para_.vipss_beta;
     
-    rbf_para_.user_lamnbda = e_para_.v_lambda;
-    rbf_core_.sample_iter = true;
-    rbf_core_.sample_threshold = e_para_.vipss_incre_shreshold;
+    vipss_para_.user_lamnbda = e_para_.v_lambda;
+    vipss_core_.sample_iter = true;
+    vipss_core_.sample_threshold = e_para_.vipss_incre_shreshold;
     // rbf_core.incre_num = size_t(auxi_vs.size() / 3  * 0.02);
 
-    rbf_core_.incre_num = e_para_.vipss_incre_pt_num;
-    rbf_core_.max_sample_iter = e_para_.vipss_incre_max_iter;
+    vipss_core_.incre_num = e_para_.vipss_incre_pt_num;
+    vipss_core_.max_sample_iter = e_para_.vipss_incre_max_iter;
     // size_t i =0;
     bool enable_debug = e_para_.vipss_incre_debug;
     double re_time = 0;
 
     auto t_begin = Clock::now();
-    for(size_t i =0; i < rbf_core_.max_sample_iter; ++i)
+    for(size_t i =0; i < vipss_core_.max_sample_iter; ++i)
     {
         auto t0 = Clock::now();
         std::cout << " current lopp id " << i << endl;
-        rbf_core_.pts = key_vs;
-        rbf_core_.auxi_npt = auxi_vs.size() / 3;
-        rbf_core_.auxi_pts = auxi_vs;
-        rbf_core_.InjectData(rbf_para_);
+        vipss_core_.pts = key_vs;
+        vipss_core_.auxi_npt = auxi_vs.size() / 3;
+        vipss_core_.auxi_pts = auxi_vs;
+        vipss_core_.InjectData(vipss_para_);
 
-        rbf_core_.BuildK(rbf_para_);
-        rbf_core_.InitNormal(rbf_para_);
-        rbf_core_.opt_incre = true;
+        vipss_core_.BuildK(vipss_para_);
+        vipss_core_.InitNormal(vipss_para_);
+        vipss_core_.opt_incre = true;
         // cout << "optimize normal ...... " << std::endl;
-        rbf_core_.OptNormal(0);
-        rbf_core_.opt_incre = false;
+        vipss_core_.OptNormal(0);
+        vipss_core_.opt_incre = false;
 
         std::string out_normal_dir = e_para_.out_dir + std::to_string(i) + "_normal";
-        // rbf_core.Write_Hermite_NormalPrediction(out_normal_dir, 1);
+        rbf_core_.Write_Hermite_NormalPrediction(out_normal_dir, 1);
 
         size_t n_voxel_line = e_para_.volumn_dim;
         if(e_para_.is_surfacing && enable_debug){
-            rbf_core_.Surfacing(0, n_voxel_line);
+            vipss_core_.Surfacing(0, n_voxel_line);
             std::string out_surface_dir = e_para_.out_dir + std::to_string(i) +"_surface";
-            rbf_core_.Write_Surface(out_surface_dir);
+            vipss_core_.Write_Surface(out_surface_dir);
         }
         bool is_outputtime = true;
         if(is_outputtime && enable_debug){
             std::string out_time_dir = e_para_.out_dir + std::to_string(i) +"_time.txt";
-            rbf_core_.Print_TimerRecord_Single(out_time_dir);
+            vipss_core_.Print_TimerRecord_Single(out_time_dir);
         }
-        if(!rbf_core_.apply_sample) return;
+        if(!vipss_core_.apply_sample) return;
         std::string out_pt_color_dir = e_para_.out_dir + std::to_string(i) + "_auxi_color";
-        rbf_core_.CalculateAuxiDistanceVal(out_pt_color_dir, enable_debug);
+        vipss_core_.CalculateAuxiDistanceVal(out_pt_color_dir, enable_debug);
 
-        if(rbf_core_.auxi_dist_mat.n_cols == 0)
+        if(vipss_core_.auxi_dist_mat.n_cols == 0)
         {
             continue;
         }
         // cout << "  rbf_core.auxi_dist_mat  " <<  rbf_core.auxi_dist_mat.n_cols << endl;
-        arma::vec dist_vec = rbf_core_.auxi_dist_mat.col(0);
+        arma::vec dist_vec = vipss_core_.auxi_dist_mat.col(0);
         // cout << " dist_vec size "<< dist_vec.size() << endl;
         arma::uvec indices = arma::sort_index(dist_vec, "descend");
         // cout << " indices size "<< indices.size() << endl;
@@ -1412,7 +1434,7 @@ void RBF_Energy::SolveIncreVipss()
         for(size_t i = 0; i < indices.size(); ++i)
         {
             size_t id = indices(i);
-            if( i < indices.size() && i < rbf_core_.incre_num * 4)
+            if( i < indices.size() && i < vipss_core_.incre_num * 4)
             {
                 new_pts.push_back(auxi_vs[id*3]);
                 new_pts.push_back(auxi_vs[id*3 + 1]);
@@ -1426,7 +1448,7 @@ void RBF_Energy::SolveIncreVipss()
         std::vector<double> incre_key_pts;
         std::vector<double> new_auxi_pts;
         // cout << " start to sample large error points " << endl;
-        sample_num = rbf_core_.incre_num;
+        sample_num = vipss_core_.incre_num;
         PTSample::FurthestSamplePointCloud(new_pts, sample_num, incre_key_pts, new_auxi_pts);
         // cout << " add new points num " << incre_key_pts.size()<< endl;
         for(auto val : incre_key_pts)
@@ -1439,37 +1461,38 @@ void RBF_Energy::SolveIncreVipss()
         }
         auxi_vs = left_auxi_pts;
 
-        if(!rbf_core_.sample_iter)
+        if(!vipss_core_.sample_iter)
         {
             break;
         }
         auto t1 = Clock::now();
         cout << "vipss incre iter " << i << " time: " << (re_time = std::chrono::nanoseconds(t1 - t0).count() / 1e9) << endl;
     }
-    rbf_core_.As_.clear();
+    vipss_core_.As_.clear();
     
     auto t_end = Clock::now();
     cout << "--------------vipss incre iter all time: " << (re_time = std::chrono::nanoseconds(t_end - t_begin).count() / 1e9) << endl;
     /*rbf_core_ = std::make_shared<RBF_Core>(); */
    
     
-    pts_ = Vs;
+    // pts_ = Vs;
     pt_n_ = pts_.size()/3;
     std::cout << " EstimateRBFNormals " << std::endl;
 
     auto t_p0 = Clock::now();
-    EstimateRBFNormals();
+    EstimateRBFNormals(vipss_core_.Dist_Function);
+    gradients_ = estimated_normals_normalized_;
     auto t_p1 = Clock::now();
     cout << " --------------  normal estimation time: " << (re_time = std::chrono::nanoseconds(t_p1 - t_p0).count() / 1e9) << endl;
 
-    rbf_core_.clearMemory();
+    // vipss_core_.clearMemory();
     
 }
 
 void RBF_Energy::SolveVipss()
 {
     /*RBF_Core rbf_core;*/
-    this->SetRBFPara();
+    this->SetVIPSSPara();
     vector<double>Vs;
     std::vector<double> vn;
     readPLYFile(e_para_.mesh_points_path, Vs, vn);
@@ -1479,16 +1502,16 @@ void RBF_Energy::SolveVipss()
   
     std::string out_mesh_path = e_para_.out_dir + "normalized_pt.ply";
     writePLYFile_VN(out_mesh_path, Vs, vn);
-    rbf_core_.apply_sample = e_para_.vipss_apply_sample;
-    rbf_core_.user_beta = e_para_.vipss_beta;
+    vipss_core_.apply_sample = e_para_.vipss_apply_sample;
+    vipss_core_.user_beta = e_para_.vipss_beta;
 
-    rbf_para_.user_lamnbda = e_para_.v_lambda;
-    rbf_core_.sample_iter = true;
+    vipss_para_.user_lamnbda = e_para_.v_lambda;
+    vipss_core_.sample_iter = true;
 
     // rbf_core.incre_num = size_t(auxi_vs.size() / 3  * 0.02);
 
-    rbf_core_.incre_num = e_para_.vipss_incre_pt_num;
-    rbf_core_.max_sample_iter = e_para_.vipss_incre_max_iter;
+    vipss_core_.incre_num = e_para_.vipss_incre_pt_num;
+    vipss_core_.max_sample_iter = e_para_.vipss_incre_max_iter;
     // size_t i =0;
     bool enable_debug = e_para_.vipss_incre_debug;
     double re_time = 0;
@@ -1498,47 +1521,47 @@ void RBF_Energy::SolveVipss()
 
     
 
-    rbf_core_.pts = pts_;
-    rbf_core_.InjectData(rbf_para_);
-    rbf_core_.BuildK(rbf_para_);
+    vipss_core_.pts = pts_;
+    vipss_core_.InjectData(vipss_para_);
+    vipss_core_.BuildK(vipss_para_);
     
     // cout << "optimize normal ...... " << std::endl;
     if (e_para_.use_input_normal)
     {
-        rbf_core_.AssignInitNormals(vn);
+        vipss_core_.AssignInitNormals(vn);
     }
     else {
-        rbf_core_.InitNormal(rbf_para_);
+        vipss_core_.InitNormal(vipss_para_);
     }
-    rbf_core_.opt_incre = false;
+    vipss_core_.opt_incre = false;
 
     if (e_para_.only_vipss_hrbf)
     {
-        rbf_core_.Opt_Hermite_With_InputNormal();
+        vipss_core_.Opt_Hermite_With_InputNormal();
     }
     else {
-        rbf_core_.OptNormal(0);
+        vipss_core_.OptNormal(0);
     }
     
-    std::string out_normal_dir = e_para_.out_dir +  "_normal";
-    rbf_core_.Write_Hermite_NormalPrediction(out_normal_dir, 1);
+    // std::string out_normal_dir = e_para_.out_dir +  "_normal";
+    // vipss_core_.Write_Hermite_NormalPrediction(out_normal_dir, 1);
     /* writePLYFile_VN(out_normal_dir, rbf_core.pts, rbf_core.init);*/
 
     VisualFuncValues();
     //VisualSamplePtsFuncValues();
 
-    EstimateRBFNormals();
+    EstimateRBFNormals(vipss_core_.Dist_Function);
 
     size_t n_voxel_line = e_para_.volumn_dim;
     if (e_para_.is_surfacing ) {
-        rbf_core_.Surfacing(0, n_voxel_line);
+        vipss_core_.Surfacing(0, n_voxel_line);
         std::string out_surface_dir = e_para_.out_dir +  "_surface";
-        rbf_core_.Write_Surface(out_surface_dir);
+        vipss_core_.Write_Surface(out_surface_dir);
     }
     bool is_outputtime = true;
     if (is_outputtime ) {
         std::string out_time_dir = e_para_.out_dir + "_time.txt";
-        rbf_core_.Print_TimerRecord_Single(out_time_dir);
+        vipss_core_.Print_TimerRecord_Single(out_time_dir);
     }
     auto t1 = Clock::now();
     cout << "vipss time: " << (re_time = std::chrono::nanoseconds(t1 - t0).count() / 1e9) << endl;
@@ -1546,7 +1569,6 @@ void RBF_Energy::SolveVipss()
 }
 
 // apply incremental vipss to optimize pts normal
-
 void RBF_Energy::SolveWithVipssOptNormal()
 {        
     SolveIncreVipss();

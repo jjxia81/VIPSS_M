@@ -34,6 +34,7 @@ class RBF_Energy
         ~RBF_Energy();
         // void InitPara();
         void SetRBFPara();
+        void SetVIPSSPara();
         void InitRBFCore();
         
         void SetPts(const std::string& ply_path);
@@ -48,7 +49,7 @@ class RBF_Energy
         void ProcessGradientsAndConfidenceMat(); 
         void SetOutdir(const std::string& dir);
         void SetEnergyParameters(const RBF_Energy_PARA& rbf_e_para);
-        void EstimateRBFNormals();
+        void EstimateRBFNormals(double (*function)(const R3Pt &in_pt));
         void SolveRBF();
         void NormalizePts();
 
@@ -127,12 +128,15 @@ class RBF_Energy
         SpMat H_esp_;
         SpMat B_esp_;
         Eigen::VectorXd B_e_;
+        std::vector<double> estimated_normals_normalized_;
 
 
     public:
         //std::shared_ptr<RBF_Core> rbf_core_;
         RBF_Core rbf_core_;
+        RBF_Core vipss_core_;
         RBF_Paras rbf_para_;
+        RBF_Paras vipss_para_;
         RBF_Energy_PARA e_para_;
         bool only_build_M_ = false;
         // std::shared_ptr<RBF_Energy_PARA> para_ptr_;

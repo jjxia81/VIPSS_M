@@ -23,7 +23,7 @@ public:
     bool vipss_incre_debug = false;
     double vipss_incre_init_pt_num = 50.0; 
     int save_iter = 0;
-    int vipss_incre_max_iter = 10;
+    int vipss_incre_max_iter = 2;
     int vipss_type = 0;
     double normal_weight_incre = 1.0;
     int volumn_dim = 50;

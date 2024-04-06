@@ -3,22 +3,22 @@ points_dir: ../data/test/doghead/doghead_1k.ply
 out_dir: ../data/test/doghead/doghead_1k_linear
 
 # use_sparse: true
-use_compact_kernel: true
+use_compact_kernel: false
 compact_radius: 0.2
-smooth_lambda: 0.0
-vipss_lambda: 0.00001
+smooth_lambda: 0.0001
+vipss_lambda: 0.0
 normal_beta:  0.00001 
 normalize_input_pts: true
-use_input_normal: true
+use_input_normal: false
 vipss_beta: 1.0
-vipss_type: 0     #0 for pure linear solver, 1 for only vipss, 2 for linear solver with incremental vipss
-only_vipss_hrbf: true
-vipss_apply_sample: false
+vipss_type: 2   #0 for pure linear solver, 1 for only vipss, 2 for linear solver with incremental vipss
+only_vipss_hrbf: false
+vipss_apply_sample: true
 vipss_incre_max_iter: 2
 vipss_incre_init_pt_num: 50
 vipss_incre_pt_num: 10
 vipss_incre_shreshold: 0.04
-vipss_incre_debug: false
+vipss_incre_debug: true
 volumn_dim: 100
 max_solve_iterate_num: 1 # linear solver iteration number
 normal_weight_incre: 1.0
