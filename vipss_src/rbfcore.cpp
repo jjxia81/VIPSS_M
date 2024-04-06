@@ -332,6 +332,10 @@ void RBF_Core::Init(RBF_Kernal kernal){
         break;
         
     case Compact:
+        // auto t1 = Clock::now();
+        BuildOctree();
+        // auto t2 = Clock::now();
+        // cout << "Build octree time: " << (std::chrono::nanoseconds(t2 - t1).count() / 1e9) << endl;
         rbf_compact_kernel_radius = compact_radius;
         rbf_compact_kernel_scale = 1.0 / pow(compact_radius, 5);
         std::cout << "compact kernel radius : ................. " << rbf_compact_kernel_radius << std::endl;
@@ -377,18 +381,13 @@ inline double RBF_Core::Dist_Function(const double *p){
        
         kern.zeros(npt*4);
         double G[3];
-        //use_compact_kernel = false;
+        use_compact_kernel = false;
+        // cout << "rbf kernel radius " << rbf_compact_kernel_radius << endl;
         if (use_compact_kernel)
         {
             std::vector<uint32_t> results;
             Pt3f new_p(p[0], p[1], p[2]);
-            /*cout << " rbf_compact_kernel_radius  " << rbf_compact_kernel_radius << endl;*/
             octree.RadiusSearch(new_p, rbf_compact_kernel_radius, results);
-           /* if (results.size() > 0)
-            {
-                cout << " point " << new_p.getX() << " " << new_p.getY() << " " << new_p.getZ() << endl;
-                cout << " results size " << results.size() << endl;
-            }*/
             
             for (auto id : results)
             {
@@ -426,27 +425,7 @@ inline double RBF_Core::Dist_Function(const double *p){
         for(int j=0;j<4;++j)for(int k=j;k<4;++k)kb(ind++) = buf[j] * buf[k];
     }
     double poly_part = dot(kb,b);
-    /*if (kernal == Compact)
-    {
-        bool within_radius = false;
-        for (int i = 0; i < npt; ++i)
-        {
-            double r = MyUtility::_VerticesDistance(p_pts + i * 3, p);
-            if (r < rbf_compact_kernel_radius * 0.5)
-            {
-                within_radius = true;
-                break;
-            }
-        }
-        if (!within_radius)
-        {
-            poly_part = -1.0 * b[0];
-        }
-    }*/
     
-    
-    
-
     if(0){
         cout<<"dist: "<<p[0]<<' '<<p[1]<<' '<<p[2]<<' '<<p_pts[3]<<' '<<p_pts[4]<<' '<<p_pts[5]<<' '<<
               Kernal_Function_2p(p,p_pts+3)<<endl;

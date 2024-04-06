@@ -45,14 +45,14 @@ void RBF_Energy_PARA::loadYamlFile(const std::string& yaml_path)
     cout << "use_input_normal 0 2" << endl;
     vipss_incre_shreshold = config["vipss_incre_shreshold"].as<double>();
     normalize_input_pts = config["normalize_input_pts"].as<bool>();
-    use_sparse = config["use_sparse"].as<bool>();
+    use_compact_kernel = config["use_compact_kernel"].as<bool>();
     cout << "use_input_normal 0 3" << endl;
-    kernel_dist = config["kernel_dist"].as<double>();
+    // kernel_dist = config["kernel_dist"].as<double>();
     cout << "use_input_normal 0 4" << endl;
     vipss_type = config["vipss_type"].as<int>();
     cout << "use_input_normal 0 5" << endl;
     use_input_normal = config["use_input_normal"].as<bool>();
-    kernel_type = config["kernel_type"].as<int>();
+
     only_vipss_hrbf = config["only_vipss_hrbf"].as<bool>();
     compact_radius = config["compact_radius"].as<double>();
 

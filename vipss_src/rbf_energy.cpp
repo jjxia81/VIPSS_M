@@ -4,6 +4,8 @@
 #include <cmath>
 #include <limits>
 #include "sample.h"
+#include <Eigen/CholmodSupport>
+typedef Eigen::Triplet<double> Tri;
 //#include "Eigen/SPQRSupport"
 // #include "../include/Eigen/RequiredModuleName"
 
@@ -23,6 +25,21 @@ Eigen::MatrixXd ConvertArmaMatToEigenMat(const arma::mat& in_mat)
         }
     }
     return e_mat;
+}
+
+void ConvertArmaSpToESp(const arma::sp_mat & in_mat, SpMat& out_mat)
+{
+    int rows = in_mat.n_rows;
+    int cols = in_mat.n_cols;
+    arma::sp_mat::const_iterator it     = in_mat.begin();
+    arma::sp_mat::const_iterator it_end = in_mat.end();
+    std::vector<Tri> tripletList;
+    for(; it != it_end; ++it)
+    {
+        tripletList.push_back(Tri(it.row(), it.col(), *it));
+    }
+    out_mat.resize(rows, cols);
+    out_mat.setFromTriplets(tripletList.begin(), tripletList.end());
 }
 
 void SaveMatrix(const arma::mat& in_mat, const std::string& path)
@@ -70,32 +87,17 @@ void RBF_Energy::SetRBFPara(){
 
     RBF_Paras& para = rbf_para_;
     RBF_InitMethod initmethod = Lamnbda_Search;
-
-    RBF_Kernal Kernal = XCube;
-    para.compact_radius = 1.0;
-    switch (e_para_.kernel_type)
-    {
-    case 3:
-        Kernal = XCube;
-        break;
-    case 4:
-        Kernal = Compact;
-        para.compact_radius = e_para_.compact_radius; 
-        break;
-    case 5:
-        Kernal = Bump;
-        break;
-    default:
-        break;
-    }
-
-    std::cout << "!!!kernel type : " << Kernal << std::endl;
     
     int polyDeg = 1;
     double sigma = 0.9;
     double rangevalue = 0.001;
 
-    para.Kernal = Kernal;
+    para.Kernal = XCube;
+    if(e_para_.use_compact_kernel)
+    {
+        para.Kernal = Compact;
+        para.compact_radius = e_para_.compact_radius; 
+    }
     para.polyDeg = polyDeg;
     para.sigma = sigma;
     para.rangevalue = rangevalue;
@@ -123,7 +125,7 @@ void RBF_Energy::InitRBFCore()
     //rbf_core_.isuse_sparse = e_para_.use_sparse;
     rbf_core_.only_build_M = only_build_M_;
     rbf_core_.InjectData(pts_, rbf_para_);
-    if (e_para_.use_sparse)
+    if (e_para_.use_compact_kernel)
     {
         double kernel_dist = e_para_.compact_radius;
         rbf_core_.use_eigen_sparse =  e_para_.use_eigen_sparse;
@@ -523,11 +525,11 @@ void RBF_Energy::BuildMatrixHSparse()
 {
     double re_time = 0;
     auto t3 = Clock::now();
-    arma::sp_mat F_s_sp(pt_n_, pt_n_ * 4 + 4);
+    arma::sp_mat F_s_sp(pt_n_, pt_n_ * 4 );
     //arma::sp_mat F_s_sp(pt_n_, pt_n_ * 4);
     F_s_sp(0, 0, arma::size(pt_n_, pt_n_)) = rbf_core_.M_s(0, 0, arma::size(pt_n_, pt_n_));
     F_s_sp(0, pt_n_, arma::size(pt_n_, 3 * pt_n_)) = rbf_core_.M_s(0, pt_n_, arma::size(pt_n_, 3 * pt_n_));
-    F_s_sp(0, 4 * pt_n_, arma::size(pt_n_, 4)) = rbf_core_.N(0, 0, arma::size(pt_n_, 4));
+    // F_s_sp(0, 4 * pt_n_, arma::size(pt_n_, 4)) = rbf_core_.N(0, 0, arma::size(pt_n_, 4));
 
     cout << "S mat size " << F_s_sp.n_nonzero << endl;
 
@@ -544,11 +546,11 @@ void RBF_Energy::BuildMatrixHSparse()
     }
 
     auto t6 = Clock::now();
-    arma::sp_mat F_g_sp(3 * pt_n_, pt_n_ * 4 + 4);
+    arma::sp_mat F_g_sp(3 * pt_n_, pt_n_ * 4 );
     //arma::sp_mat F_g_sp(3 * pt_n_, pt_n_ * 4);
     F_g_sp(0, 0, arma::size(3 * pt_n_, pt_n_)) = rbf_core_.M_s(pt_n_, 0, arma::size(3 * pt_n_, pt_n_));
     F_g_sp(0, pt_n_, arma::size(3 * pt_n_, 3 * pt_n_)) = rbf_core_.M_s(pt_n_, pt_n_, arma::size(3 * pt_n_, 3 * pt_n_));
-    F_g_sp(0, 4 * pt_n_, arma::size(3 * pt_n_, 4)) = rbf_core_.N(pt_n_, 0, arma::size(3 * pt_n_, 4));
+    // F_g_sp(0, 4 * pt_n_, arma::size(3 * pt_n_, 4)) = rbf_core_.N(pt_n_, 0, arma::size(3 * pt_n_, 4));
     auto t7 = Clock::now();
     cout << "Build sparse GradientTermMat time: " << (re_time = std::chrono::nanoseconds(t7 - t6).count() / 1e9) << endl;
 
@@ -659,7 +661,7 @@ void RBF_Energy::ReduceBAndHMatWithSVD()
 {
     if (e_para_.enable_constriants)
     {
-        if (e_para_.use_sparse)
+        if (e_para_.use_compact_kernel)
         {
             B_reduced_ = B_ * SVD_V_;
             H_sp_ = SVD_V_.t() * H_sp_;
@@ -710,16 +712,17 @@ void RBF_Energy::BuildEnergyMatrix()
     // cout << "BuildConfidenceMat time: " <<  (re_time = std::chrono::nanoseconds(t8 - t7).count()/1e9) <<endl;
     auto t6 = Clock::now();
     // cout << "BuildMatrixB time: " <<  (re_time = std::chrono::nanoseconds(t6 - t8).count()/1e9) <<endl;
-    if (e_para_.use_sparse)
+    if (e_para_.use_compact_kernel)
     {
-        if (e_para_.use_eigen_sparse)
-        {
-            BuildMatrixHEigenSparse();
-        }
-        else {
-            BuildMatrixHSparse();
-        }
+        // if (e_para_.use_eigen_sparse)
+        // {
+        //     BuildMatrixHEigenSparse();
+        // }
+        // else {
+        //     BuildMatrixHSparse();
+        // }
         
+        BuildMatrixHSparse();
     }
     else {
         BuildMatrixH();
@@ -765,21 +768,14 @@ void RBF_Energy::SolveReducedLinearSystem()
     
     if (e_para_.enable_constriants)
     {
-        if (e_para_.use_sparse)
+        if (e_para_.use_compact_kernel)
         {
-            if (e_para_.use_eigen_sparse)
-            {
-
-            }
-            else {
                 arma::superlu_opts opts;
                 opts.allow_ugly = true;
                 opts.equilibrate = true;
                 arma::spsolve(X_reduced_, H_sp_, B_reduced_.t(), "lapack", opts);
                 H_sp_.clear();
-            }
-            
-            X_ = SVD_V_ * X_reduced_;
+                X_ = SVD_V_ * X_reduced_;
         }
         else {
             X_reduced_ = arma::solve(H_, B_reduced_.t(), arma::solve_opts::likely_sympd);
@@ -790,25 +786,41 @@ void RBF_Energy::SolveReducedLinearSystem()
         
         if(max_iter_num_<=1) SVD_V_.clear();
     } else {
-        if (e_para_.use_sparse)
+        if (e_para_.use_compact_kernel)
         {
-            if (e_para_.use_eigen_sparse)
+            // if (e_para_.use_eigen_sparse)
             {
-                //Eigen::ConjugateGradient<SpMat, Eigen::Upper> solver;
-               /* Eigen::SPQR<SpMat> solver;
-                auto x = solver.compute(H_esp_).solve(B_e_);
-                X_.set_size(pt_n_ * 4 + 4, 1);
-                for (size_t i = 0; i < pt_n_ * 4 + 4; ++i)
+                auto t0 = Clock::now();
+                ConvertArmaSpToESp(H_sp_, H_esp_);
+                H_sp_.clear();
+                auto t1 = Clock::now();
+                cout << "ConvertArmaSpToESp time: " <<  (re_time = std::chrono::nanoseconds(t1 - t0).count()/1e9) <<endl;
+
+                cout << " B_.rows " << B_.n_cols << endl;
+                Eigen::VectorXd B_new(B_.n_cols);
+                for(size_t i = 0; i < B_.n_cols; ++i)
+                {
+                    B_new(i) = B_(0, i); 
+                }
+                B_.clear();
+                cout << " H_esp_ size " << H_esp_.rows() << " " <<H_esp_.cols() << endl;
+                
+                Eigen::CholmodSupernodalLLT	<SpMat> solver;
+                solver.compute(H_esp_);
+                Eigen::VectorXd x = solver.solve(B_new);
+
+                X_.zeros(pt_n_ * 4 + 4, 1);
+                for (size_t i = 0; i < pt_n_ * 4; ++i)
                 {
                     X_(i, 0) = x(i);
-                }*/
+                }
             }
-            else {
-                arma::superlu_opts opts;
-                opts.allow_ugly = true;
-                opts.equilibrate = true;
-                arma::spsolve(X_, H_sp_, B_.t(), "lapack", opts);
-            }
+            // else {
+            //     arma::superlu_opts opts;
+            //     opts.allow_ugly = true;
+            //     opts.equilibrate = true;
+            //     arma::spsolve(X_, H_sp_, B_.t(), "lapack", opts);
+            // }
             
         }
         else {
@@ -1483,6 +1495,8 @@ void RBF_Energy::SolveVipss()
 
     auto t_begin = Clock::now();
     auto t0 = Clock::now();
+
+    
 
     rbf_core_.pts = pts_;
     rbf_core_.InjectData(rbf_para_);

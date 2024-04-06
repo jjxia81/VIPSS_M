@@ -3,7 +3,7 @@
 #include <limits>
 #include "rbfcore.h"
 #include "readers.h"
-#include "gurobi/gurobi_c++.h"
+// #include "gurobi/gurobi_c++.h"
 #include <chrono>
 namespace fs = std::filesystem;
 typedef std::chrono::high_resolution_clock Clock;
@@ -120,71 +120,71 @@ void NormalOptimizer::SetRBFEnergyInput()
 
 void NormalOptimizer::OptimizeNormalSigns()
 {
-	std::cout << " file dir " << e_para_.mesh_points_path << endl;
-	LoadAllContours(e_para_.mesh_points_path);
-	GRBEnv* env = 0;
-	GRBVar* x = 0;
-	env = new GRBEnv();
-	GRBModel model = GRBModel(*env);
-	model.set(GRB_StringAttr_ModelName, "normal_opt");
-	// Add variables, set bounds and obj coefficients
-	size_t var_num = slice_points_.size();
-	x = model.addVars(var_num, GRB_BINARY);
+	// std::cout << " file dir " << e_para_.mesh_points_path << endl;
+	// LoadAllContours(e_para_.mesh_points_path);
+	// GRBEnv* env = 0;
+	// GRBVar* x = 0;
+	// env = new GRBEnv();
+	// GRBModel model = GRBModel(*env);
+	// model.set(GRB_StringAttr_ModelName, "normal_opt");
+	// // Add variables, set bounds and obj coefficients
+	// size_t var_num = slice_points_.size();
+	// x = model.addVars(var_num, GRB_BINARY);
 
-	double re_time;
-	auto t0 = Clock::now();
-	CombineContoursAndSigns();
-	NormalizePts();
-	SetRBFEnergyInput();
-	rbf_e_.e_para_ = e_para_;
-	rbf_e_.rbf_para_.user_lamnbda = e_para_.e_lambda;
+	// double re_time;
+	// auto t0 = Clock::now();
+	// CombineContoursAndSigns();
+	// NormalizePts();
+	// SetRBFEnergyInput();
+	// rbf_e_.e_para_ = e_para_;
+	// rbf_e_.rbf_para_.user_lamnbda = e_para_.e_lambda;
 
-	std::cout << "------------------- lambda 0 : " << rbf_e_.rbf_para_.user_lamnbda << std::endl;
-	rbf_e_.InitRBFCore();
-	rbf_e_.rbf_core_.BuildK(rbf_e_.rbf_para_);
-	arma::mat& final_H = rbf_e_.rbf_core_.finalH;
-	auto t1 = Clock::now();
-	cout << "UpdateGradient time: " << (re_time = std::chrono::nanoseconds(t1 - t0).count() / 1e9) << endl;
+	// std::cout << "------------------- lambda 0 : " << rbf_e_.rbf_para_.user_lamnbda << std::endl;
+	// rbf_e_.InitRBFCore();
+	// rbf_e_.rbf_core_.BuildK(rbf_e_.rbf_para_);
+	// arma::mat& final_H = rbf_e_.rbf_core_.finalH;
+	// auto t1 = Clock::now();
+	// cout << "UpdateGradient time: " << (re_time = std::chrono::nanoseconds(t1 - t0).count() / 1e9) << endl;
 
-	arma::mat loss_mat = g_ * final_H * g_.t();
-	std::cout << "-------------------loss_mat : " << loss_mat(0) << endl;
-	auto t2 = Clock::now();
+	// arma::mat loss_mat = g_ * final_H * g_.t();
+	// std::cout << "-------------------loss_mat : " << loss_mat(0) << endl;
+	// auto t2 = Clock::now();
 	
-	GRBQuadExpr obj_sum = 0;
-	std::vector<GRBLinExpr> signed_normals;
-	for (size_t i = 0; i < normals_all_.size(); ++i)
-	{
-		// std::cout << " i " << i << " idex " << sign_index_map_[i] << endl;
-		GRBLinExpr obj_n = (1 - x[sign_index_map_[i]] * 2) * normals_all_[i];
-		signed_normals.push_back(obj_n);
-	}
+	// GRBQuadExpr obj_sum = 0;
+	// std::vector<GRBLinExpr> signed_normals;
+	// for (size_t i = 0; i < normals_all_.size(); ++i)
+	// {
+	// 	// std::cout << " i " << i << " idex " << sign_index_map_[i] << endl;
+	// 	GRBLinExpr obj_n = (1 - x[sign_index_map_[i]] * 2) * normals_all_[i];
+	// 	signed_normals.push_back(obj_n);
+	// }
 
-	for (size_t i = 0; i < normals_all_.size(); ++i)
-	{
-		GRBLinExpr row_e = 0;
-		for (size_t j = 0; j < normals_all_.size(); ++j)
-		{
-			row_e += signed_normals[j] * final_H(j, i);
-		}
-		obj_sum += row_e * signed_normals[i];
-	}
+	// for (size_t i = 0; i < normals_all_.size(); ++i)
+	// {
+	// 	GRBLinExpr row_e = 0;
+	// 	for (size_t j = 0; j < normals_all_.size(); ++j)
+	// 	{
+	// 		row_e += signed_normals[j] * final_H(j, i);
+	// 	}
+	// 	obj_sum += row_e * signed_normals[i];
+	// }
 
-	model.setObjective(obj_sum, GRB_MINIMIZE);
-	model.optimize();
-	auto t3 = Clock::now();
-	cout << "---- Normal Direction time: " << (re_time = std::chrono::nanoseconds(t3 - t2).count() / 1e9) << endl;
-	normal_signs_.clear();
-	for (int j = 0; j < var_num; j++) {
-		cout << "x[" << j << "] = " << x[j].get(GRB_DoubleAttr_X) << endl;
-		if(x[j].get(GRB_DoubleAttr_X) == 1)
-		{
-			normal_signs_.push_back(-1.0);
-		} else {
-			normal_signs_.push_back(1.0);
-		}
-	}
-	CombineNormalAndSigns();
-	SetRBFEnergyInput();
+	// model.setObjective(obj_sum, GRB_MINIMIZE);
+	// model.optimize();
+	// auto t3 = Clock::now();
+	// cout << "---- Normal Direction time: " << (re_time = std::chrono::nanoseconds(t3 - t2).count() / 1e9) << endl;
+	// normal_signs_.clear();
+	// for (int j = 0; j < var_num; j++) {
+	// 	cout << "x[" << j << "] = " << x[j].get(GRB_DoubleAttr_X) << endl;
+	// 	if(x[j].get(GRB_DoubleAttr_X) == 1)
+	// 	{
+	// 		normal_signs_.push_back(-1.0);
+	// 	} else {
+	// 		normal_signs_.push_back(1.0);
+	// 	}
+	// }
+	// CombineNormalAndSigns();
+	// SetRBFEnergyInput();
 	// rbf_e_.SetEnergyParameters(e_para_);
 	// rbf_e_.pts_ = pts_all_;
 	// rbf_e_.gradients_ = normals_all_;

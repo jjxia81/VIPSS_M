@@ -1,55 +1,10 @@
 debug: false
-# points_dir: ..\data\C_Data\Hip\Result_afterSmooth_sample_pts.ply
-# out_dir:  ..\data\C_Data\Hip\vp_res
-# points_dir: ..\data\torus\torus_energy\2000_noise_normal.ply
-# points_dir: ..\data\twist_star\twist_star_sample_ptns5.ply
-# points_dir: ..\data\cases\vipss\walrus.ply
-# points_dir: E:\projects\All_Elbows\Contours\6007\contour_points\contour_ptnormal_6\contour_ptnormal_6.ply
-# out_dir: E:\projects\All_Elbows\output\out_mesh\6007\6007
-# points_dir: E:\projects\VIPSS_M\data\cases\hand_ok\hand_ok_in_ptn.ply
-# out_dir: E:\projects\VIPSS_M\data\cases\hand_ok\hand_ok_vipss
-# points_dir: E:\projects\VIPSS_M\data\rect_torus\slices
-# points_dir: E:\projects\All_Elbows\Contours\6140\contour_points\contour_ptnormal_6\contour_ptnormal_6.ply
-# points_dir: E:\projects\VIPSS_M\data\twist_star\twist_star_in_ptn.ply
-# points_dir: E:\projects\VIPSS_M\data\cases\walrus\walrus_in_ptn0.ply
-# points_dir: ..\data\dragon_sample_2000.ply
-# points_dir: E:\projects\VIPSS_M\data\vipss_cases\planck\2000\planck2000_in_ptn.ply
-# out_dir: E:\projects\VIPSS_M\data\vipss_cases\planck\2000\planck2000_vipss
-# points_dir: E:\projects\VIPSS_M\data\cases\phone\phone_sample.ply
-# out_dir: E:\projects\VIPSS_M\data\cases\phone\phone_sample
-points_dir: E:\projects\VIPSS_M\data\test\sphere\sphere_6k.ply
-out_dir: E:\projects\VIPSS_M\data\test\sphere\sphere_6k_linear
-# points_dir: E:\projects\VIPSS_M\data\test\sphere\sphere_2000.ply
-# out_dir: E:\projects\VIPSS_M\data\test\sphere\sphere_2000_linear
-# points_dir: E:\projects\VIPSS_M\data\test\torus\torus_sample.ply
-# out_dir: E:\projects\VIPSS_M\data\test\torus\torus_sample
-# points_dir: E:\projects\VIPSS_M\data\test\phone\phone_sample.ply
-# out_dir: E:\projects\VIPSS_M\data\test\phone\phone_sample
+points_dir: ../data/test/doghead/doghead_1k.ply
+out_dir: ../data/test/doghead/doghead_1k_linear
 
-# points_dir: E:\projects\VIPSS_M\data\test\planck\planck_sample.ply
-# out_dir: E:\projects\VIPSS_M\data\test\planck\planck_sample_linear
-# points_dir: E:\projects\VIPSS_M\data\test\torus_knot_s2000.ply
-# out_dir: E:\projects\VIPSS_M\data\test\torus_knot_s2000
-# points_dir: E:\projects\VIPSS_M\data\test\doghead\dog_head_sample2000.ply
-# out_dir: E:\projects\VIPSS_M\data\test\doghead\dog_head_sample2000_linear
-# points_dir: E:\projects\VIPSS_M\data\vipss_cases\vertebra.ply
-# out_dir: E:\projects\VIPSS_M\data\vipss_cases\vertebra\vertebra
-
-# points_dir: E:\projects\VIPSS_M\data\vipss_cases\handOK.ply
-# out_dir: E:\projects\VIPSS_M\data\vipss_cases\handOK\handOK
-# points_dir: E:\projects\VIPSS_M\data\vipss_cases\dragon_sample_6000.ply
-# out_dir: E:\projects\VIPSS_M\data\vipss_cases\dragon6000\dragon
-
-# out_dir:  E:\projects\All_Elbows\grad_output\out_mesh\dragon
-# out_dir:  E:\projects\All_Elbows\grad_output\normal_iter\
-# out_dir: E:\projects\VIPSS_M\data\cases\walrus\iter\normal_iter
-# out_dir: ..\data\cases\vipss_output\walrus\walrus
-# smooth_lambda: 0.000001 
-
-use_sparse: true
-kernel_dist: 0.2
-compact_radius: 0.15
-kernel_type: 4
+# use_sparse: true
+use_compact_kernel: true
+compact_radius: 0.2
 smooth_lambda: 0.0
 vipss_lambda: 0.00001
 normal_beta:  0.00001 
@@ -57,7 +12,7 @@ normalize_input_pts: true
 use_input_normal: true
 vipss_beta: 1.0
 vipss_type: 0     #0 for pure linear solver, 1 for only vipss, 2 for linear solver with incremental vipss
-only_vipss_hrbf: false
+only_vipss_hrbf: true
 vipss_apply_sample: false
 vipss_incre_max_iter: 2
 vipss_incre_init_pt_num: 50

@@ -213,10 +213,7 @@ void RBF_Core::Set_HermiteRBFSparse(vector<double>& pts, double kernel_dist) {
     cout << "Set_HermiteRBF sparse" << endl;
     //for(auto a:pts)cout<<a<<' ';cout<<endl;
     isHermite = true;
-    auto t1 = Clock::now();
-    BuildOctree();
-    auto t2 = Clock::now();
-    cout << "Build octree time: " << (std::chrono::nanoseconds(t2 - t1).count() / 1e9) << endl;
+   
 
     auto t3 = Clock::now();
     std::vector<std::vector<uint32_t>> pt_pair_ids;

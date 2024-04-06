@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     if(argc <= 1)
     {
         //config_path = "../config.yaml";
-        config_path = "E:/projects/VIPSS_M/config.yaml";
+        config_path = "../config.yaml";
     } else {
         config_path = argv[1];
         cout <<" yaml file exists : " <<  argv[1] << endl;
@@ -77,8 +77,7 @@ int main(int argc, char* argv[])
         return 0;
     }
     rbf_e_para.loadYamlFile(config_path);
-    /*rbf_compact_kernel_radius = rbf_e_para.compact_radius;
-    rbf_compact_kernel_scale = 1.0 / pow(rbf_compact_kernel_radius, 5);*/
+
     cout << " loadYamlFile succeed! " << endl;
     if (rbf_e_para.optimize_normal)
     {

@@ -3,7 +3,7 @@
 #include "rbf_energy_para.h"
 #include <set>
 #include <map>
-#include "gurobi/gurobi_c++.h"
+// #include "gurobi/gurobi_c++.h"
 
 class NormalOptimizer
 {
