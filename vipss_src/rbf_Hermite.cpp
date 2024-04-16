@@ -90,13 +90,54 @@ bool RBF_Core::Write_Hermite_NormalPrediction(string fname, int mode){
 
 
 
+void RBF_Core::Set_RBF(vector<double>&pts){
+    isHermite = false;
+    a.set_size(npt);
+    M.set_size(npt,npt);
+    double *p_pts = pts.data();
+    for(int i=0;i<npt;++i){
+        for(int j=i;j<npt;++j){
+            {
+                M(i,j) = M(j,i) = Kernal_Function_2p(p_pts+i*3, p_pts+j*3);
+            }
+        }
+    }
+}
+
+void RBF_Core::Set_RBFSparse(vector<double>&pts, double kernel_radius){
+    isHermite = false;
+    a.set_size(npt);
+    M_s.set_size(npt,npt);
+
+    std::vector<std::vector<uint32_t>> pt_pair_ids;
+    // arma::mat dist_simbol = arma::ones(npt, npt) * -1.0;
+    for (int i = 0; i < npt; ++i) {
+        Pt3f new_p(pts[3 * i], pts[3 * i + 1], pts[3 * i + 2]);
+        std::vector<uint32_t> results;
+        octree.RadiusSearch(new_p, (float)kernel_radius, results);
+        pt_pair_ids.push_back(results);
+    }
+
+    double *p_pts = pts.data();
+    for(int i=0;i<npt;++i){
+        for (auto j : pt_pair_ids[i])
+        {
+            if (M_s(i, j) != 0) continue;
+            M_s(i, j) = M_s(j, i) = Kernal_Function_2p(p_pts + i * 3, p_pts + j * 3);  
+        }
+    }
+}
+
+
+
 void RBF_Core::Set_HermiteRBF(vector<double>&pts){
 
     cout<<"Set_HermiteRBF"<<endl;
     //for(auto a:pts)cout<<a<<' ';cout<<endl;
     isHermite = true;
-    if(apply_sample)
+    if(apply_sample && auxi_npt > 0)
     {
+
         As_.set_size(auxi_npt,npt*4 + 4);
         
         double *p_pts = pts.data();
@@ -526,8 +567,8 @@ void RBF_Core::Set_Hermite_PredictNormal(vector<double>&pts){
                 Ws = Ws.t() * Ws; 
                 if(auxi_npt > 20 * npt)
                 {
-                    user_beta = 2 * double(npt) / double(auxi_npt);
-                    // user_beta = 1.0;
+                    // user_beta = 2 * double(npt) / double(auxi_npt);
+                    user_beta = 1.0;
                 }
                 if(User_Lamnbda> 0)
                 {

@@ -60,8 +60,10 @@ class RBF_Energy
         void SolveVipss();
         void SolveWithVipssOptNormal();
 
-        void VisualFuncValues();
-        void VisualSamplePtsFuncValues();
+        void VisualFuncValues(double (*function)(const R3Pt &in_pt));
+        void VisualFuncValues(double (*function)(const R3Pt &in_pt), const double axi_val, 
+                                int axi_id, const std::string& dist_fuc_color_path);
+        void VisualSamplePtsFuncValues(double (*function)(const R3Pt &in_pt));
         
     private:
         
@@ -84,13 +86,19 @@ class RBF_Energy
         void SolveRBFIterate();
         void CalNewNormalMat();
         void SolveIncreVipss();
+        void CalVipssDistFuncVal(const std::vector<double>& in_pts);
         
         
         // void SaveMatrix();
         // void ConvertArmaMatToEigenMat(const arma::mat& in_mat,  );
     
-        
+        static double Dist_Function(const R3Pt &in_pt);
+        void SetHRBFCores();
+        void SurfacingWithCompactKernel(int n_voxels_1d);
 
+        vector<double>finalMesh_v_;
+        vector<uint>finalMesh_fv_;
+        
     public: 
         
         arma::mat F_s_; // surface term matrix F_s
@@ -100,6 +108,7 @@ class RBF_Energy
         arma::mat C_a_; // condition constraint matrix A
         arma::mat B_;
         arma::mat B_reduced_;
+        arma::mat vipss_f_;
         arma::mat H_;
         arma::sp_mat H_sp_;
         arma::mat H_v_;
@@ -128,6 +137,7 @@ class RBF_Energy
         SpMat H_esp_;
         SpMat B_esp_;
         Eigen::VectorXd B_e_;
+        std::vector<double> estimated_normals_;
         std::vector<double> estimated_normals_normalized_;
 
 

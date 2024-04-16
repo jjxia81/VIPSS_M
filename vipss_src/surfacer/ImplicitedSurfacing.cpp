@@ -50,6 +50,7 @@ void Surfacer::CalSurfacingPara(vector<double>&Vs, int nvoxels){
     //dSize = width * 0.02;
     dSize = width * (1./nvoxels);
 
+    use_compact_kernel = false;
     if(use_compact_kernel)
     {
         dSize = compact_kernel_radius * 0.25;

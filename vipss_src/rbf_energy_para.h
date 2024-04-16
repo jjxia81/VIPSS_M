@@ -39,8 +39,11 @@ public:
     double vipss_incre_shreshold = 0.04;
     bool normalize_input_pts = false;
     bool use_compact_kernel = false;
+    bool vipss_use_compact_kernel = false;
     bool use_eigen_sparse = false;
     double compact_radius = 0.1;
+    bool use_multilevel_vipss = false;
+    bool use_vipss_RBF = false;
 
 
     std::string mesh_points_path;

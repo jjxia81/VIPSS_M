@@ -14,6 +14,7 @@
 using namespace std;
 
 typedef Eigen::SparseMatrix<double> SpMat;
+typedef Eigen::Triplet<double> Tri;
 
 
 enum RBF_INPUT{
@@ -120,7 +121,7 @@ public:
 
     vector<double>pts;
     vector<double> auxi_pts;
-    size_t auxi_npt;
+    size_t auxi_npt = 0;
     vector<double>normals;
     vector<double>tangents;
     vector<uint>edges;
@@ -188,7 +189,7 @@ public:
     bool isuse_sparse = false;
     bool opt_incre = false;
     double sparse_para = 1e-3;
-    bool use_compact_kernel = true;
+    bool use_compact_kernel = false;
 
 public:
     unordered_map<int, string>mp_RBF_INITMETHOD;
@@ -262,6 +263,8 @@ public:
 
 
 public:
+    void Set_RBF(vector<double>&pts);
+    void Set_RBFSparse(vector<double>&pts, double kernel_radius);
     void Set_HermiteRBF(vector<double>&pts);
     void Set_HermiteRBFSparse(vector<double>& pts, double kernel_dist = 0.1);
     int Solve_HermiteRBF(vector<double>&vn);

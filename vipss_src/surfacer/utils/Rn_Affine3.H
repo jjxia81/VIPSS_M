@@ -227,7 +227,7 @@ public:
     inline void    Print( const WINbool in_bDoReturn = FALSE ) const;
 
     //@}
-private:
+public:
     ///
     Coord x, y, z;
 };

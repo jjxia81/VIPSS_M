@@ -381,7 +381,8 @@ inline double RBF_Core::Dist_Function(const double *p){
        
         kern.zeros(npt*4);
         double G[3];
-        use_compact_kernel = false;
+        
+        // use_compact_kernel = false;
         // cout << "rbf kernel radius " << rbf_compact_kernel_radius << endl;
         if (use_compact_kernel)
         {
@@ -407,8 +408,25 @@ inline double RBF_Core::Dist_Function(const double *p){
         }
         
     }else{
-        kern.set_size(npt);
-        for(int i=0;i<npt;++i)kern(i) = Kernal_Function_2p(p_pts+i*3, p);
+        if (use_compact_kernel)
+        {
+            std::vector<uint32_t> results;
+            Pt3f new_p(p[0], p[1], p[2]);
+            octree.RadiusSearch(new_p, rbf_compact_kernel_radius, results);
+            kern.zeros(npt);
+            
+            for (auto id : results)
+            {
+                kern(id) = Kernal_Function_2p(p_pts + id * 3, p);
+            }
+
+        } else {
+            kern.set_size(npt);
+            for(int i=0;i<npt;++i)kern(i) = Kernal_Function_2p(p_pts+i*3, p);
+        }
+        double loc_part = dot(kern,a);
+        return loc_part;
+
     }
 
     double loc_part = dot(kern,a);

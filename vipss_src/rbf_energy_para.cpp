@@ -46,6 +46,7 @@ void RBF_Energy_PARA::loadYamlFile(const std::string& yaml_path)
     vipss_incre_shreshold = config["vipss_incre_shreshold"].as<double>();
     normalize_input_pts = config["normalize_input_pts"].as<bool>();
     use_compact_kernel = config["use_compact_kernel"].as<bool>();
+    vipss_use_compact_kernel = config["vipss_use_compact_kernel"].as<bool>();
     cout << "use_input_normal 0 3" << endl;
     // kernel_dist = config["kernel_dist"].as<double>();
     cout << "use_input_normal 0 4" << endl;
@@ -55,6 +56,8 @@ void RBF_Energy_PARA::loadYamlFile(const std::string& yaml_path)
 
     only_vipss_hrbf = config["only_vipss_hrbf"].as<bool>();
     compact_radius = config["compact_radius"].as<double>();
+    use_multilevel_vipss = config["use_multilevel_vipss"].as<bool>();
+    use_vipss_RBF = config["use_vipss_RBF"].as<bool>();
 
     cout << "use_input_normal " << use_input_normal << endl;
     if (!use_scan_data)
